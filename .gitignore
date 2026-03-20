@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+**/.venv/
+**/venv/
+**/__pycache__/
+*.pyc
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.log
+.idea/
+*.local
+*.db
