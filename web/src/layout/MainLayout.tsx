@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
+  IconGarage,
   IconBrandCar,
   IconCar,
   IconChart,
@@ -13,6 +14,7 @@ import {
 
 const nav = [
   { to: '/', label: 'Dashboard', end: true, Icon: IconDashboard },
+  { to: '/garage', label: 'Garage', Icon: IconGarage },
   { to: '/vehicle', label: 'Vehicle Data', Icon: IconCar },
   { to: '/analysis', label: 'Driving Analysis', Icon: IconChart },
   { to: '/routes', label: 'Route Recommendations', Icon: IconRoute },

@@ -566,21 +566,19 @@ p {
 }
 
 .card {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.35rem 1.45rem;
   text-align: left;
-  box-shadow: var(--ms-shadow-card);
   transition:
     box-shadow 0.25s var(--ms-ease-out),
     transform 0.25s var(--ms-ease-out),
     border-color 0.25s var(--ms-ease-out);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .card:hover {
-  box-shadow: var(--ms-shadow-card-hover);
-  border-color: rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
@@ -601,10 +599,10 @@ p {
 
 .table-wrap {
   overflow: auto;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
-  background: #fff;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .table {
@@ -667,18 +665,15 @@ p {
 /* Dashboard surfaces — solid white, soft elevation */
 .ms-metric-card {
   position: relative;
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.35rem 1.3rem;
-  box-shadow: var(--ms-shadow-card);
-  transition:
-    box-shadow 0.25s var(--ms-ease-out),
-    transform 0.25s var(--ms-ease-spring);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.25s var(--ms-ease-spring);
 }
 
 .ms-metric-card:hover {
-  box-shadow: var(--ms-shadow-card-hover);
   transform: translateY(-2px);
 }
 
@@ -718,16 +713,15 @@ p {
 }
 
 .ms-chart-card {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.35rem 1.4rem;
-  box-shadow: var(--ms-shadow-card);
-  transition: box-shadow 0.25s var(--ms-ease-out), transform 0.25s var(--ms-ease-out);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.25s var(--ms-ease-out);
 }
 
 .ms-chart-card:hover {
-  box-shadow: var(--ms-shadow-card-hover);
   transform: translateY(-2px);
 }
 
@@ -819,16 +813,15 @@ p {
 }
 
 .ms-progress-row {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.2rem 1.3rem;
-  box-shadow: var(--ms-shadow-card);
-  transition: box-shadow 0.25s var(--ms-ease-out), transform 0.2s var(--ms-ease-out);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.2s var(--ms-ease-out);
 }
 
 .ms-progress-row:hover {
-  box-shadow: var(--ms-shadow-card-hover);
   transform: translateY(-1px);
 }
 
@@ -856,8 +849,6 @@ p {
 }
 
 .ms-map-placeholder {
-  background: linear-gradient(165deg, #ecfdf5 0%, #d1fae5 45%, #ccfbf1 100%);
-  border: 1px solid rgba(45, 212, 191, 0.35);
   border-radius: var(--ms-radius-lg);
   min-height: 232px;
   display: flex;
@@ -868,7 +859,9 @@ p {
   padding: 2rem;
   margin-bottom: 1.35rem;
   gap: 1rem;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .ms-map-figure {
@@ -890,19 +883,16 @@ p {
   grid-template-columns: 1fr auto;
   gap: 1rem;
   align-items: center;
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.2rem 1.4rem;
   margin-bottom: 0.9rem;
-  box-shadow: var(--ms-shadow-card);
-  transition:
-    box-shadow 0.25s var(--ms-ease-out),
-    transform 0.2s var(--ms-ease-out);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.2s var(--ms-ease-out);
 }
 
 .ms-route-card:hover {
-  box-shadow: var(--ms-shadow-card-hover);
   transform: translateY(-2px);
 }
 
@@ -947,14 +937,14 @@ p {
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
-  background: linear-gradient(135deg, #f0f7ff 0%, #eff6ff 100%);
-  border: 1px solid rgba(59, 130, 246, 0.22);
   border-radius: var(--ms-radius);
   padding: 1rem 1.15rem;
   margin-top: 1.1rem;
   font-size: 0.9rem;
   color: #1e3a8a;
-  box-shadow: var(--ms-shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .ms-search-row {
@@ -979,12 +969,12 @@ p {
   flex-wrap: wrap;
   gap: 1rem;
   align-items: flex-end;
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.25rem 1.35rem;
   margin-bottom: 1.35rem;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .ms-vehicle-grid {
@@ -994,18 +984,16 @@ p {
 }
 
 .ms-vehicle-card {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius-lg);
   overflow: hidden;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   transition:
-    box-shadow 0.3s var(--ms-ease-out),
     transform 0.3s var(--ms-ease-spring);
 }
 
 .ms-vehicle-card:hover {
-  box-shadow: var(--ms-shadow-card-hover);
   transform: translateY(-3px);
 }
 
@@ -1055,12 +1043,12 @@ p {
 }
 
 .ms-settings-card {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.6rem 1.65rem;
   margin-bottom: 1.35rem;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .ms-settings-card h2 {
@@ -1087,12 +1075,12 @@ p {
 }
 
 .ms-alerts {
-  background: #fff;
-  border: 1px solid var(--ms-border);
   border-radius: var(--ms-radius);
   padding: 1.35rem 1.4rem;
   margin-top: 1.35rem;
-  box-shadow: var(--ms-shadow-card);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .ms-alerts h3 {

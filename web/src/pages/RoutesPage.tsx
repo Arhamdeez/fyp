@@ -1,5 +1,6 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { apiJson } from '../api/client';
+import { GlassSurface } from '../components/GlassSurface';
 
 type Insights = { summary: string; weather_note: string | null; driving_tip: string };
 type Share = {
@@ -55,6 +56,12 @@ export function RoutesPage() {
     }
   }
 
+  // Fetch initial insights so weather is visible without extra clicks.
+  useEffect(() => {
+    onInsights().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onShare() {
     setBusy(true);
     setMsg(null);
@@ -90,8 +97,7 @@ export function RoutesPage() {
     }
   }
 
-  const weatherText =
-    insights?.weather_note ?? 'Clear skies expected for the next 3 hours. Perfect conditions for your trip.';
+  const weatherText = insights?.weather_note ?? null;
 
   return (
     <div className="page">
@@ -115,7 +121,7 @@ export function RoutesPage() {
         </button>
       </form>
 
-      <div className="ms-map-placeholder">
+      <GlassSurface variant="light" borderRadius={22} className="ms-map-placeholder" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <div className="ms-map-figure">
           <svg width="200" height="120" viewBox="0 0 200 120" style={{ opacity: 0.85 }}>
             <circle cx="30" cy="85" r="8" fill="#22c55e" />
@@ -138,9 +144,9 @@ export function RoutesPage() {
             Route visualization will appear here.
           </p>
         </div>
-      </div>
+      </GlassSurface>
 
-      <article className="ms-route-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-route-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <div>
           <strong>
             Fastest route
@@ -161,9 +167,9 @@ export function RoutesPage() {
         <button type="button" className="btn primary">
           Select route
         </button>
-      </article>
+      </GlassSurface>
 
-      <article className="ms-route-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-route-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <div>
           <strong>Scenic route</strong>
           <div className="ms-route-meta">
@@ -181,9 +187,9 @@ export function RoutesPage() {
         <button type="button" className="btn primary">
           Select route
         </button>
-      </article>
+      </GlassSurface>
 
-      <article className="ms-route-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-route-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <div>
           <strong>Highway route</strong>
           <div className="ms-route-meta">
@@ -201,18 +207,20 @@ export function RoutesPage() {
         <button type="button" className="btn primary">
           Select route
         </button>
-      </article>
+      </GlassSurface>
 
-      <div className="ms-weather-bar">
+      <GlassSurface variant="light" borderRadius={16} className="ms-weather-bar" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <span aria-hidden>☁️</span>
         <div>
           <strong>Weather advisory</strong>
-          <div>{weatherText}</div>
+          <div className={weatherText ? '' : 'muted'}>
+            {weatherText ?? 'Fetching weather… (set OPENWEATHER_API_KEY in backend/.env for live data)'}
+          </div>
           {insights?.driving_tip && (
             <div style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>Tip: {insights.driving_tip}</div>
           )}
         </div>
-      </div>
+      </GlassSurface>
 
       <details className="ms-advanced">
         <summary>Advanced coordinates &amp; sharing</summary>
@@ -249,10 +257,12 @@ export function RoutesPage() {
       </details>
 
       {insights && (
-        <article className="card prose" style={{ marginTop: '1.25rem' }}>
-          <h2>API summary</h2>
-          <p>{insights.summary}</p>
-        </article>
+        <div style={{ marginTop: '1.25rem' }}>
+          <GlassSurface variant="light" borderRadius={16} className="card prose" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
+            <h2>API summary</h2>
+            <p>{insights.summary}</p>
+          </GlassSurface>
+        </div>
       )}
 
       <h2 style={{ marginTop: '1.5rem', fontSize: '1.1rem' }}>Similar shared routes ({matches.length})</h2>

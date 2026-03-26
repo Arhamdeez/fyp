@@ -146,20 +146,20 @@ export function AnalysisPage() {
       </div>
 
       <div className="ms-grid-2" style={{ marginBottom: '1.5rem' }}>
-        <div className="ms-chart-card">
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>Harsh braking events</h3>
           <MiniBarChart labels={WEEK} values={barValues} color="#2563eb" maxY={barMax} />
-        </div>
-        <div className="ms-chart-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>Acceleration patterns</h3>
           <p className="muted small" style={{ marginTop: 0 }}>
             Relative intensity (8:00–11:00 window)
           </p>
           <MiniLineChart data={ACCEL_LINE} color="#14b8a6" maxY={10} />
-        </div>
+        </GlassSurface>
       </div>
 
-      <div className="ms-chart-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h3 style={{ marginBottom: '0.75rem' }}>Driving recommendations</h3>
         <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--ms-text-muted)', fontSize: '0.9rem' }}>
           {TIPS.map((t) => (
@@ -174,7 +174,7 @@ export function AnalysisPage() {
             {latest.acceleration_events}
           </p>
         )}
-      </div>
+      </GlassSurface>
     </div>
   );
 }

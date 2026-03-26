@@ -79,7 +79,7 @@ class MomentumApi {
       body: jsonEncode({
         'vehicle_model': model,
         'vehicle_type': type,
-        if (year != null) 'year': year,
+        'year': ?year,
       }),
     );
     return _jsonOrThrow(r);
@@ -97,7 +97,7 @@ class MomentumApi {
       body: jsonEncode({
         'speed': speed,
         'rpm': rpm,
-        if (fuelConsumption != null) 'fuel_consumption': fuelConsumption,
+        'fuel_consumption': ?fuelConsumption,
       }),
     );
     await _jsonOrThrow(r);
@@ -147,8 +147,8 @@ class MomentumApi {
       body: jsonEncode({
         'dest_lat': destLat,
         'dest_lng': destLng,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
       }),
     );
     return _jsonOrThrow(r);
@@ -170,8 +170,8 @@ class MomentumApi {
         'origin_lng': oLng,
         'dest_lat': dLat,
         'dest_lng': dLng,
-        if (label != null) 'label': label,
-        if (departWindow != null) 'depart_window': departWindow,
+        'label': ?label,
+        'depart_window': ?departWindow,
       }),
     );
     await _jsonOrThrow(r);

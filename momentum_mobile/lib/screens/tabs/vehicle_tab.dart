@@ -133,7 +133,7 @@ class _VehicleTabState extends State<VehicleTab> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _selectedId,
+                  initialValue: _selectedId,
                   decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
                   items: _vehicles
                       .map(

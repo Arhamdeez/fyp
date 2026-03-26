@@ -78,7 +78,7 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(
-          value: _vehicleId,
+          initialValue: _vehicleId,
           decoration: const InputDecoration(labelText: 'Base vehicle profile', border: OutlineInputBorder()),
           items: _vehicles
               .map(

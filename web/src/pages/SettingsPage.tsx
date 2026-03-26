@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { IconCar } from '../components/icons';
+import { GlassSurface } from '../components/GlassSurface';
 
 type UserBrief = { user_id: number; name: string; email: string };
 
@@ -58,7 +59,7 @@ function SettingsPageBody({ user }: { user: UserBrief | null }) {
       </header>
       {saved && <p className="banner ms-banner-ok">{saved}</p>}
 
-      <section className="ms-settings-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-settings-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h2>
           <IconUser /> Profile settings
         </h2>
@@ -75,9 +76,9 @@ function SettingsPageBody({ user }: { user: UserBrief | null }) {
             Save changes
           </button>
         </form>
-      </section>
+      </GlassSurface>
 
-      <section className="ms-settings-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-settings-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h2>
           <IconCar /> Vehicle settings
         </h2>
@@ -98,9 +99,9 @@ function SettingsPageBody({ user }: { user: UserBrief | null }) {
             Update vehicle
           </button>
         </form>
-      </section>
+      </GlassSurface>
 
-      <section className="ms-settings-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-settings-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h2>
           <IconBell /> Notifications
         </h2>
@@ -112,7 +113,7 @@ function SettingsPageBody({ user }: { user: UserBrief | null }) {
           <input type="checkbox" checked={notifWeather} onChange={(e) => setNotifWeather(e.target.checked)} />
           Weather advisories for saved routes
         </label>
-      </section>
+      </GlassSurface>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiJson } from '../api/client';
 import { MiniLineChart } from '../components/charts';
+import { GlassSurface } from '../components/GlassSurface';
 
 type Vehicle = {
   vehicle_id: number;
@@ -69,7 +70,7 @@ export function DashboardPage() {
       {error && <p className="error">{error}</p>}
 
       <div className="cards" style={{ marginBottom: '1.5rem' }}>
-        <article className="ms-metric-card">
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-primary)' }} />
           <div className="ms-metric-label">Driving score</div>
           <div className="ms-metric-value ms-stat-accent">
@@ -79,49 +80,49 @@ export function DashboardPage() {
             </span>
           </div>
           <div className="ms-trend-up">+8% vs last week</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-teal)' }} />
           <div className="ms-metric-label">Average speed</div>
           <div className="ms-metric-value">
             {avgSpeed} <span className="muted small">km/h</span>
           </div>
           <div className="ms-metric-sub">avg</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-green)' }} />
           <div className="ms-metric-label">Fuel efficiency</div>
           <div className="ms-metric-value">{fuel}</div>
           <div className="ms-trend-up">−5% vs prior</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-orange)' }} />
           <div className="ms-metric-label">Trip distance</div>
           <div className="ms-metric-value">
             {tripKm} <span className="muted small">km</span>
           </div>
           <div className="ms-metric-sub">this week</div>
-        </article>
+        </GlassSurface>
       </div>
 
       <div className="ms-grid-2" style={{ marginBottom: '1.5rem' }}>
-        <div className="ms-chart-card">
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>Speed over time</h3>
           <MiniLineChart data={SPEED_DEMO} color="#2563eb" maxY={80} />
           <div className="muted small" style={{ marginTop: '0.5rem' }}>
             Sample timeline (00:00 → 00:30)
           </div>
-        </div>
-        <div className="ms-chart-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>Fuel consumption (L/100km)</h3>
           <MiniLineChart data={FUEL_DEMO} color="#14b8a6" maxY={12} />
           <div className="muted small" style={{ marginTop: '0.5rem' }}>
             Same window as speed chart
           </div>
-        </div>
+        </GlassSurface>
       </div>
 
-      <div className="ms-chart-card">
+      <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h3 style={{ marginBottom: '1rem' }}>Recent trip history</h3>
         <div className="table-wrap" style={{ border: 'none' }}>
           <table className="table">
@@ -148,7 +149,7 @@ export function DashboardPage() {
         <p className="muted small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
           Vehicles registered: <strong>{vehicles.length}</strong>. Add telemetry under Vehicle Data to refresh scores from the API.
         </p>
-      </div>
+      </GlassSurface>
     </div>
   );
 }

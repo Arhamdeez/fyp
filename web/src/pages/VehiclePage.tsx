@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiJson } from '../api/client';
 import { MiniLineChart } from '../components/charts';
+import { GlassSurface } from '../components/GlassSurface';
 
 type Vehicle = {
   vehicle_id: number;
@@ -26,19 +28,31 @@ function IconCheck() {
 }
 
 export function VehiclePage() {
+  const [searchParams] = useSearchParams();
+  const queryVehicleIdParam = searchParams.get('vehicle_id');
+  const queryVehicleId = queryVehicleIdParam != null ? Number(queryVehicleIdParam) : null;
+  const queryVehicleIdValid = queryVehicleId != null && Number.isFinite(queryVehicleId);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState<number | ''>('');
   const [samples, setSamples] = useState<Sample[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  async function fetchVehicles(selectFirstIfEmpty: boolean) {
-    const v = await apiJson<Vehicle[]>('/vehicles');
-    setVehicles(v);
-    if (selectFirstIfEmpty && v.length > 0) {
-      setVehicleId((prev) => (prev === '' ? v[0].vehicle_id : prev));
-    }
-  }
+  const fetchVehicles = useCallback(
+    async (selectFirstIfEmpty: boolean) => {
+      const v = await apiJson<Vehicle[]>('/vehicles');
+      setVehicles(v);
+      if (selectFirstIfEmpty && v.length > 0) {
+        if (queryVehicleIdValid && v.some((x) => x.vehicle_id === queryVehicleId)) {
+          setVehicleId(queryVehicleId as number);
+        } else {
+          setVehicleId((prev) => (prev === '' ? v[0].vehicle_id : prev));
+        }
+      }
+    },
+    [queryVehicleIdValid, queryVehicleId],
+  );
 
   async function fetchSamples(vid: number) {
     const rows = await apiJson<Sample[]>(`/vehicles/${vid}/data?limit=100`);
@@ -47,7 +61,14 @@ export function VehiclePage() {
 
   useEffect(() => {
     fetchVehicles(true).catch((e) => setMsg(String(e)));
-  }, []);
+  }, [fetchVehicles]);
+
+  // If the user navigates to this page with `?vehicle_id=...`, select that vehicle.
+  useEffect(() => {
+    if (!queryVehicleIdValid) return;
+    if (!vehicles.some((x) => x.vehicle_id === queryVehicleId)) return;
+    setVehicleId(queryVehicleId as number);
+  }, [queryVehicleIdParam, vehicles, queryVehicleIdValid, queryVehicleId]);
 
   useEffect(() => {
     if (vehicleId === '') return;
@@ -185,46 +206,46 @@ export function VehiclePage() {
       </div>
 
       <div className="cards" style={{ marginBottom: '1.25rem' }}>
-        <article className="ms-metric-card">
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-primary)' }} />
           <div className="ms-metric-label">Speed</div>
           <div className="ms-metric-value">{speedDisplay}</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-teal)' }} />
           <div className="ms-metric-label">Engine RPM</div>
           <div className="ms-metric-value">{rpmDisplay}</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-green)' }} />
           <div className="ms-metric-label">Fuel level</div>
           <div className="ms-metric-value">{fuelDisplay}</div>
-        </article>
-        <article className="ms-metric-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-metric-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <div className="ms-metric-dot" style={{ background: 'var(--ms-orange)' }} />
           <div className="ms-metric-label">Engine temp</div>
           <div className="ms-metric-value">{tempDisplay}</div>
-        </article>
+        </GlassSurface>
       </div>
 
       <div className="ms-grid-2">
-        <div className="ms-chart-card">
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>Speed history</h3>
           <p className="muted small" style={{ marginTop: 0 }}>
             Last 10 samples
           </p>
           <MiniLineChart data={speedSeries} color="#2563eb" maxY={80} />
-        </div>
-        <div className="ms-chart-card">
+        </GlassSurface>
+        <GlassSurface variant="light" borderRadius={16} className="ms-chart-card" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
           <h3>RPM history</h3>
           <p className="muted small" style={{ marginTop: 0 }}>
             Scaled view (÷40) for chart
           </p>
           <MiniLineChart data={rpmSeries} color="#14b8a6" maxY={80} />
-        </div>
+        </GlassSurface>
       </div>
 
-      <div className="ms-alerts">
+      <GlassSurface variant="light" borderRadius={16} className="ms-alerts" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <h3>Diagnostic alerts</h3>
         <div className="ms-alert-item">
           <IconCheck />
@@ -234,39 +255,41 @@ export function VehiclePage() {
           <IconCheck />
           Tire pressure normal
         </div>
-      </div>
+      </GlassSurface>
 
       <h3 style={{ marginTop: '2rem', marginBottom: '0.75rem' }}>Raw samples</h3>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Speed</th>
-              <th>RPM</th>
-              <th>Fuel</th>
-            </tr>
-          </thead>
-          <tbody>
-            {samples.length === 0 ? (
+      <GlassSurface variant="light" borderRadius={16} backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
               <tr>
-                <td colSpan={4} className="muted">
-                  No samples yet.
-                </td>
+                <th>Time</th>
+                <th>Speed</th>
+                <th>RPM</th>
+                <th>Fuel</th>
               </tr>
-            ) : (
-              [...samples].reverse().map((r) => (
-                <tr key={r.data_id}>
-                  <td className="mono small">{r.timestamp}</td>
-                  <td>{r.speed.toFixed(1)}</td>
-                  <td>{Math.round(r.rpm)}</td>
-                  <td>{r.fuel_consumption?.toFixed(2) ?? '—'}</td>
+            </thead>
+            <tbody>
+              {samples.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="muted">
+                    No samples yet.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                [...samples].reverse().map((r) => (
+                  <tr key={r.data_id}>
+                    <td className="mono small">{r.timestamp}</td>
+                    <td>{r.speed.toFixed(1)}</td>
+                    <td>{Math.round(r.rpm)}</td>
+                    <td>{r.fuel_consumption?.toFixed(2) ?? '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </GlassSurface>
     </div>
   );
 }

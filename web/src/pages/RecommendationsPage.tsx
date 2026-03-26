@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiJson } from '../api/client';
 import { IconStar } from '../components/icons';
+import { GlassSurface } from '../components/GlassSurface';
 
 type Vehicle = { vehicle_id: number; vehicle_model: string };
 type Rec = {
@@ -103,7 +104,7 @@ export function RecommendationsPage() {
 
       {msg && <p className={msg.includes('updated') ? 'banner ms-banner-ok' : 'error'}>{msg}</p>}
 
-      <div className="ms-filters">
+      <GlassSurface variant="light" borderRadius={16} className="ms-filters" backgroundOpacity={0.12} saturation={1.35} displace={0.18}>
         <span className="muted small" style={{ fontWeight: 600, marginRight: '0.5rem' }}>
           Filters
         </span>
@@ -137,7 +138,7 @@ export function RecommendationsPage() {
             style={{ width: '100%' }}
           />
         </label>
-      </div>
+      </GlassSurface>
 
       <div className="toolbar wrap">
         <label className="inline">
@@ -168,11 +169,19 @@ export function RecommendationsPage() {
           <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>From your profile (API)</h2>
           <div className="cards">
             {items.map((r) => (
-              <article key={r.recommendation_id} className="card">
+              <GlassSurface
+                key={r.recommendation_id}
+                variant="light"
+                borderRadius={16}
+                className="card"
+                backgroundOpacity={0.12}
+                saturation={1.35}
+                displace={0.18}
+              >
                 <h3>{r.recommendation_type}</h3>
                 <p className="small">{r.description}</p>
                 <p className="mono muted small">{r.date_generated}</p>
-              </article>
+              </GlassSurface>
             ))}
           </div>
         </section>
@@ -181,7 +190,15 @@ export function RecommendationsPage() {
       <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Curated picks (demo)</h2>
       <div className="ms-vehicle-grid">
         {MOCK_VEHICLES.map((car) => (
-          <article key={car.title} className="ms-vehicle-card">
+          <GlassSurface
+            key={car.title}
+            variant="light"
+            borderRadius={22}
+            className="ms-vehicle-card"
+            backgroundOpacity={0.12}
+            saturation={1.35}
+            displace={0.18}
+          >
             <div className="ms-vehicle-img" />
             <div className="ms-vehicle-body">
               <div className="ms-vehicle-score">
@@ -213,7 +230,7 @@ export function RecommendationsPage() {
                 </button>
               </div>
             </div>
-          </article>
+          </GlassSurface>
         ))}
       </div>
     </div>

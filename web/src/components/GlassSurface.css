@@ -13,10 +13,10 @@
 
 /* Auth / light modals — strong frost, high clarity */
 .gs-elite--light {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(48px) saturate(1.65);
-  -webkit-backdrop-filter: blur(48px) saturate(1.65);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, var(--gs-bg-alpha, 0.78));
+  backdrop-filter: blur(var(--gs-blur, 48px)) saturate(var(--gs-sat, 1.65));
+  -webkit-backdrop-filter: blur(var(--gs-blur, 48px)) saturate(var(--gs-sat, 1.65));
+  border: 1px solid rgba(255, 255, 255, var(--gs-border-alpha, 0.95));
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.04),
     0 4px 12px rgba(0, 0, 0, 0.04),
@@ -34,10 +34,10 @@
 
 /* Rare dark floating panel */
 .gs-elite--dark {
-  background: rgba(24, 24, 27, 0.82);
-  backdrop-filter: blur(40px) saturate(1.2);
-  -webkit-backdrop-filter: blur(40px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(24, 24, 27, var(--gs-bg-alpha, 0.82));
+  backdrop-filter: blur(var(--gs-blur, 40px)) saturate(var(--gs-sat, 1.2));
+  -webkit-backdrop-filter: blur(var(--gs-blur, 40px)) saturate(var(--gs-sat, 1.2));
+  border: 1px solid rgba(255, 255, 255, var(--gs-border-alpha, 0.1));
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.35),
     0 32px 80px rgba(0, 0, 0, 0.45);
@@ -54,7 +54,9 @@
     #0e7490 88%,
     #0d9488 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, var(--gs-border-alpha, 0.14));
+  backdrop-filter: blur(var(--gs-blur, 40px)) saturate(var(--gs-sat, 1.25));
+  -webkit-backdrop-filter: blur(var(--gs-blur, 40px)) saturate(var(--gs-sat, 1.25));
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.12) inset,
     0 12px 40px rgba(29, 78, 216, 0.22),

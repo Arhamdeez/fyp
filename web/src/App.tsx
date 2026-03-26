@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { MainLayout } from './layout/MainLayout';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { GaragePage } from './pages/GaragePage';
 import { LoginPage } from './pages/LoginPage';
 import { RecommendationsPage } from './pages/RecommendationsPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -21,6 +22,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/garage" element={<GaragePage />} />
               <Route path="/vehicle" element={<VehiclePage />} />
               <Route path="/analysis" element={<AnalysisPage />} />
               <Route path="/routes" element={<RoutesPage />} />

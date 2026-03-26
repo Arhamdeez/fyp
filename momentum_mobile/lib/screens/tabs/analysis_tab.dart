@@ -72,7 +72,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
       padding: const EdgeInsets.all(16),
       children: [
         DropdownButtonFormField<int>(
-          value: _vehicleId,
+          initialValue: _vehicleId,
           decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
           items: _vehicles
               .map(
