@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
@@ -8,15 +9,41 @@ import RouteRecommendations from "./pages/RouteRecommendations";
 import VehicleRecommendations from "./pages/VehicleRecommendations";
 import Settings from "./pages/Settings";
 
-const PageShell = ({ title, children }) => (
-  <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
-    <Sidebar />
-    <main style={{ flex: 1, padding: 20 }}>
-      <Navbar title={title} />
-      {children}
-    </main>
-  </div>
-);
+const PageShell = ({ title, children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.("(max-width: 900px)")?.matches ?? false);
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(max-width: 900px)");
+    if (!mq) return;
+    const handler = () => setIsMobile(mq.matches);
+    handler();
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return (
+    <div className="appShell">
+      {!isMobile ? <Sidebar variant="desktop" /> : null}
+      <Sidebar variant="mobile" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="mainContent">
+        <div className="topBarRow">
+          {isMobile ? (
+            <button className="iconButton" type="button" onClick={() => setSidebarOpen(true)}>
+              Menu
+            </button>
+          ) : (
+            <span />
+          )}
+          <div style={{ flex: 1 }}>
+            <Navbar title={title} />
+          </div>
+        </div>
+        {children}
+      </main>
+    </div>
+  );
+};
 
 const App = () => (
   <BrowserRouter>

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../api/momentum_api.dart';
+import '../../live/obd_live_store.dart';
 
 class VehicleTab extends StatefulWidget {
   const VehicleTab({super.key, required this.api});
@@ -15,48 +16,111 @@ class VehicleTab extends StatefulWidget {
 
 class _VehicleTabState extends State<VehicleTab> {
   bool _loading = true;
-  String? _error;
+  bool _usingDemo = false;
   List<dynamic> _vehicles = const [];
-  int? _selectedId;
+  String? _selectedId;
   List<dynamic> _samples = const [];
+
+  String _vehicleIdFrom(Map<String, dynamic> v) => (v['_id'] ?? v['vehicle_id']).toString();
+
+  void _onObdStoreChanged() {
+    if (!context.mounted) return;
+    if (_selectedId == MomentumApi.demoVehicleId) {
+      setState(() => _samples = _demoSamples());
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    ObdLiveStore.instance.addListener(_onObdStoreChanged);
     _refreshVehicles();
   }
 
+  @override
+  void dispose() {
+    ObdLiveStore.instance.removeListener(_onObdStoreChanged);
+    super.dispose();
+  }
+
+  /// Demo rows: static when OBD is off; live snapshot when ELM is connected.
+  List<Map<String, dynamic>> _demoSamples() {
+    final o = ObdLiveStore.instance;
+    if (o.elmConnected && (o.speedKph != null || o.rpm != null)) {
+      return [
+        {
+          'speed': (o.speedKph ?? 0).toDouble(),
+          'rpm': (o.rpm ?? 0).toDouble(),
+          'timestamp': (o.lastUpdate ?? DateTime.now()).toIso8601String(),
+          'source': 'OBD',
+        },
+      ];
+    }
+    return [
+      for (var i = 0; i < 5; i++)
+        {
+          'speed': 42.0 + i * 3,
+          'rpm': 2200.0 - i * 40,
+          'timestamp': DateTime.now().subtract(Duration(minutes: i * 2)).toIso8601String(),
+          'source': 'demo',
+        },
+    ];
+  }
+
   Future<void> _refreshVehicles() async {
+    if (!context.mounted) return;
     setState(() {
       _loading = true;
-      _error = null;
+      _usingDemo = false;
     });
+
+    List<dynamic> v;
+    var usingDemo = false;
     try {
-      final v = await widget.api.vehicles();
-      setState(() {
-        _vehicles = v;
-        if (_selectedId == null && v.isNotEmpty) {
-          _selectedId = (v.first as Map<String, dynamic>)['vehicle_id'] as int;
-        }
-      });
-      if (_selectedId != null) await _loadSamples();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      v = await widget.api.vehicles();
+      if (v.isEmpty) {
+        v = MomentumApi.dummyVehicles();
+        usingDemo = true;
+      }
+    } catch (_) {
+      v = MomentumApi.dummyVehicles();
+      usingDemo = true;
     }
+
+    if (!context.mounted) return;
+    setState(() {
+      _vehicles = v;
+      _usingDemo = usingDemo;
+      if (_selectedId == null && v.isNotEmpty) {
+        _selectedId = _vehicleIdFrom(v.first as Map<String, dynamic>);
+      } else if (_selectedId != null && v.isNotEmpty) {
+        final ids = v.map((e) => _vehicleIdFrom(e as Map<String, dynamic>)).toSet();
+        if (!ids.contains(_selectedId)) {
+          _selectedId = _vehicleIdFrom(v.first as Map<String, dynamic>);
+        }
+      }
+      _loading = false;
+    });
+
+    await _loadSamples();
   }
 
   Future<void> _loadSamples() async {
     final id = _selectedId;
     if (id == null) return;
+
+    if (id == MomentumApi.demoVehicleId) {
+      if (context.mounted) setState(() => _samples = _demoSamples());
+      return;
+    }
+
     try {
       final rows = await widget.api.vehicleData(id);
-      setState(() => _samples = rows);
+      if (context.mounted) setState(() => _samples = rows);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      setState(() => _samples = const []);
     }
   }
 
@@ -90,7 +154,8 @@ class _VehicleTabState extends State<VehicleTab> {
           year: int.tryParse(year.text.trim()),
         );
         setState(() {
-          _selectedId = created['vehicle_id'] as int;
+          _selectedId = (created['_id'] ?? created['vehicle_id']).toString();
+          _usingDemo = false;
         });
         await _refreshVehicles();
       } catch (e) {
@@ -102,6 +167,14 @@ class _VehicleTabState extends State<VehicleTab> {
   Future<void> _simulateObdBurst() async {
     final id = _selectedId;
     if (id == null) return;
+    if (id == MomentumApi.demoVehicleId) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add a vehicle on the server (Save in Add vehicle) to post simulated trips.')),
+        );
+      }
+      return;
+    }
     final rnd = Random();
     try {
       for (var i = 0; i < 25; i++) {
@@ -118,27 +191,41 @@ class _VehicleTabState extends State<VehicleTab> {
     }
   }
 
+  static String _fmtNum(dynamic v, [int decimals = 1]) {
+    if (v == null) return '—';
+    if (v is num) return v.toDouble().toStringAsFixed(decimals);
+    return v.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) {
-      return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)));
-    }
+
+    final selected = _selectedId;
 
     return Column(
       children: [
+        if (_usingDemo)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Offline demo vehicle — open the OBD tab and connect to show live speed/RPM here.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.primary),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _selectedId,
+                child: DropdownButtonFormField<String>(
+                  key: ValueKey<String?>('${selected ?? ''}-${_vehicles.length}'),
+                  initialValue: selected,
                   decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
                   items: _vehicles
                       .map(
-                        (v) => DropdownMenuItem<int>(
-                          value: (v as Map<String, dynamic>)['vehicle_id'] as int,
+                        (v) => DropdownMenuItem<String>(
+                          value: _vehicleIdFrom(v as Map<String, dynamic>),
                           child: Text('${v['vehicle_model']} (${v['vehicle_type']})'),
                         ),
                       )
@@ -160,7 +247,7 @@ class _VehicleTabState extends State<VehicleTab> {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: _selectedId == null ? null : _simulateObdBurst,
+                  onPressed: selected == null ? null : _simulateObdBurst,
                   icon: const Icon(Icons.sensors),
                   label: const Text('Simulate OBD burst'),
                 ),
@@ -172,16 +259,18 @@ class _VehicleTabState extends State<VehicleTab> {
         ),
         Expanded(
           child: _samples.isEmpty
-              ? const Center(child: Text('No samples yet — add a vehicle and simulate OBD data.'))
+              ? const Center(child: Text('No samples yet — add a vehicle and simulate OBD data, or open the OBD tab.'))
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: _samples.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final r = _samples[_samples.length - 1 - i] as Map<String, dynamic>;
+                    final src = r['source'];
+                    final extra = src != null ? ' · $src' : '';
                     return ListTile(
                       dense: true,
-                      title: Text('Speed ${r['speed']?.toStringAsFixed(1)} km/h · RPM ${r['rpm']?.toStringAsFixed(0)}'),
+                      title: Text('Speed ${_fmtNum(r['speed'])} km/h · RPM ${_fmtNum(r['rpm'], 0)}$extra'),
                       subtitle: Text('${r['timestamp']}'),
                     );
                   },

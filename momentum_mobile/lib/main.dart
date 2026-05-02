@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'api/momentum_api.dart';
 import 'session.dart';
-import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 
 void main() {
@@ -34,12 +33,6 @@ class _MomentumAppState extends State<MomentumApp> {
     setState(() => _ready = true);
   }
 
-  void _onAuthChanged() {
-    setState(() {
-      _api.bearerToken = _session.token;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final seed = const Color(0xFF0D9488);
@@ -55,15 +48,7 @@ class _MomentumAppState extends State<MomentumApp> {
       ),
       home: !_ready
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-          : _session.token == null
-              ? LoginScreen(api: _api, session: _session, onSuccess: _onAuthChanged)
-              : MainShell(
-                  api: _api,
-                  session: _session,
-                  onLogout: () {
-                    setState(() {});
-                  },
-                ),
+          : MainShell(api: _api, session: _session),
     );
   }
 }

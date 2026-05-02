@@ -14,9 +14,11 @@ class RecommendationsTab extends StatefulWidget {
 class _RecommendationsTabState extends State<RecommendationsTab> {
   bool _loading = true;
   List<dynamic> _vehicles = const [];
-  int? _vehicleId;
+  String? _vehicleId;
   final _commuteKm = TextEditingController(text: '15');
   List<dynamic> _items = const [];
+
+  String _vehicleIdFrom(Map<String, dynamic> v) => (v['_id'] ?? v['vehicle_id']).toString();
 
   @override
   void initState() {
@@ -31,22 +33,33 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
   }
 
   Future<void> _boot() async {
+    if (!context.mounted) return;
     setState(() => _loading = true);
+    List<dynamic> v;
     try {
-      final v = await widget.api.vehicles();
-      final recs = await widget.api.listRecommendations();
-      setState(() {
-        _vehicles = v;
-        if (_vehicleId == null && v.isNotEmpty) {
-          _vehicleId = (v.first as Map<String, dynamic>)['vehicle_id'] as int;
-        }
-        _items = recs;
-      });
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      v = await widget.api.vehicles();
+    } catch (_) {
+      v = MomentumApi.dummyVehicles();
     }
+    List<dynamic> recs = const [];
+    try {
+      recs = await widget.api.listRecommendations();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+    if (!context.mounted) return;
+    setState(() {
+      _vehicles = v.isEmpty ? MomentumApi.dummyVehicles() : v;
+      final list = _vehicles;
+      if (_vehicleId == null && list.isNotEmpty) {
+        _vehicleId = _vehicleIdFrom(list.first as Map<String, dynamic>);
+      }
+      _items = recs;
+    });
+    if (!context.mounted) return;
+    setState(() => _loading = false);
   }
 
   Future<void> _generate() async {
@@ -56,10 +69,13 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
     try {
       await widget.api.generateRecommendations(id, commuteKm: km);
       final recs = await widget.api.listRecommendations();
+      if (!mounted) return;
       setState(() => _items = recs);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Recommendations updated')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Recommendations updated')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -77,13 +93,13 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<int>(
+        DropdownButtonFormField<String>(
           initialValue: _vehicleId,
           decoration: const InputDecoration(labelText: 'Base vehicle profile', border: OutlineInputBorder()),
           items: _vehicles
               .map(
-                (v) => DropdownMenuItem<int>(
-                  value: (v as Map<String, dynamic>)['vehicle_id'] as int,
+                (v) => DropdownMenuItem<String>(
+                  value: _vehicleIdFrom(v as Map<String, dynamic>),
                   child: Text('${v['vehicle_model']}'),
                 ),
               )

@@ -28,6 +28,8 @@ The server retries connecting for about a minute so MongoDB can start slightly a
 3. Copy `.env.example` from the repo root into `server/.env` (or create `server/.env` with `MONGODB_URI`, `JWT_SECRET`, `PORT`, etc.)
 4. Start MongoDB (see above), then `npm run dev`
 
+If you see **`EADDRINUSE`** / “address already in use”, another `node` process is still bound to that `PORT` (often a second terminal with `npm run dev`). Stop the old one: `lsof -iTCP:5001 -sTCP:LISTEN` then `kill <PID>`, or change `PORT` in `server/.env`.
+
 API base URL: `http://localhost:5001/api` if you use `PORT=5001`, otherwise `http://localhost:5000/api`
 
 ### Implemented API groups
@@ -62,6 +64,14 @@ Your **laptop** only needs to run the **API**; the phone talks to it over **Wi�
 4. **React in the phone’s browser** (optional): build/run the web client with `REACT_APP_API_URL=http://YOUR_PC_LAN_IP:5001/api` and open `http://YOUR_PC_LAN_IP:3001` (or the port Vite/CRA prints).
 
 Ensure the **phone and PC are on the same Wi‑Fi** (not guest isolation). Android already allows cleartext HTTP in this project for dev.
+
+## Dev auth bypass (no JWT)
+
+If the client has login disabled, set in `server/.env`:
+
+- `DEV_BYPASS_AUTH=true`
+
+The API will attach a demo user (`DEV_USER_EMAIL`, created on first request) to every protected route. Set `DEV_BYPASS_AUTH=false` before any real deployment.
 
 ## Notes
 

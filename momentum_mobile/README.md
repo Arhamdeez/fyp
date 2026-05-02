@@ -17,6 +17,12 @@ flutter run --dart-define=MOMENTUM_API_BASE=http://192.168.1.42:5001/api
 
 Bluetooth to the ELM327 dongle does **not** go through the laptop — only REST calls do.
 
+## OBD-II (ELM327) on Android
+
+- Open the **OBD** tab. Pair the dongle in Android Bluetooth settings first, then **Connect & read**.
+- This build uses **Bluetooth Classic (SPP)** via `flutter_bluetooth_serial`, which matches most cheap **Bluetooth ELM327** adapters.
+- If your adapter is **BLE-only**, this screen will not connect — you would need a BLE-based stack instead.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

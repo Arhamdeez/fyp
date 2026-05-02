@@ -37,6 +37,26 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 const port = Number(process.env.PORT || 5000);
 const host = process.env.HOST || "0.0.0.0";
 
-app.listen(port, host, () => {
+const server = app.listen(port, host, () => {
   console.log(`Momentum server listening on http://${host}:${port} (reachable from other devices on your LAN)`);
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`
+Port ${port} is already in use (EADDRINUSE).
+
+Usually another copy of this server is still running (old nodemon / node).
+
+Fix:
+  1) Find it:  lsof -iTCP:${port} -sTCP:LISTEN
+  2) Stop it:  kill <PID>
+  3) Or use another port in server/.env:  PORT=5002
+
+Then run: npm run dev
+`);
+  } else {
+    console.error("Server listen error:", err);
+  }
+  process.exit(1);
 });

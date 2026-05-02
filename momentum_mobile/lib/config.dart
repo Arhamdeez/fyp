@@ -18,7 +18,8 @@ String momentumApiBaseUrl() {
     defaultValue: '',
   );
   if (fromEnv.isNotEmpty) {
-    var base = fromEnv.trim();
+    // Remove all whitespace so typos like "http:// 192.168..." still work.
+    var base = fromEnv.trim().replaceAll(RegExp(r'\s+'), '');
     if (!base.endsWith('/api')) {
       base = base.endsWith('/') ? '${base}api' : '$base/api';
     }

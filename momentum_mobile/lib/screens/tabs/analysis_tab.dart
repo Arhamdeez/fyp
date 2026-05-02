@@ -14,8 +14,10 @@ class AnalysisTab extends StatefulWidget {
 class _AnalysisTabState extends State<AnalysisTab> {
   bool _loading = true;
   List<dynamic> _vehicles = const [];
-  int? _vehicleId;
+  String? _vehicleId;
   List<dynamic> _history = const [];
+
+  String _vehicleIdFrom(Map<String, dynamic> v) => (v['_id'] ?? v['vehicle_id']).toString();
 
   @override
   void initState() {
@@ -24,28 +26,40 @@ class _AnalysisTabState extends State<AnalysisTab> {
   }
 
   Future<void> _boot() async {
+    if (!context.mounted) return;
     setState(() => _loading = true);
+    List<dynamic> v;
     try {
-      final v = await widget.api.vehicles();
-      setState(() {
-        _vehicles = v;
-        if (_vehicleId == null && v.isNotEmpty) {
-          _vehicleId = (v.first as Map<String, dynamic>)['vehicle_id'] as int;
-        }
-      });
-      await _refreshHistory();
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      v = await widget.api.vehicles();
+      if (v.isEmpty) v = MomentumApi.dummyVehicles();
+    } catch (_) {
+      v = MomentumApi.dummyVehicles();
     }
+    if (!context.mounted) return;
+    setState(() {
+      _vehicles = v;
+      if (_vehicleId == null && v.isNotEmpty) {
+        _vehicleId = _vehicleIdFrom(v.first as Map<String, dynamic>);
+      }
+    });
+    await _refreshHistory();
+    if (!context.mounted) return;
+    setState(() => _loading = false);
   }
 
   Future<void> _refreshHistory() async {
     final id = _vehicleId;
-    if (id == null) return;
+    if (id == null || id == MomentumApi.demoVehicleId) {
+      if (!context.mounted) return;
+      setState(() => _history = const []);
+      return;
+    }
     try {
       final h = await widget.api.analysisHistory(id);
+      if (!context.mounted) return;
       setState(() => _history = h);
     } catch (_) {
+      if (!context.mounted) return;
       setState(() => _history = const []);
     }
   }
@@ -71,18 +85,19 @@ class _AnalysisTabState extends State<AnalysisTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        DropdownButtonFormField<int>(
+        DropdownButtonFormField<String>(
           initialValue: _vehicleId,
           decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
           items: _vehicles
               .map(
-                (v) => DropdownMenuItem<int>(
-                  value: (v as Map<String, dynamic>)['vehicle_id'] as int,
+                (v) => DropdownMenuItem<String>(
+                  value: _vehicleIdFrom(v as Map<String, dynamic>),
                   child: Text('${v['vehicle_model']}'),
                 ),
               )
               .toList(),
           onChanged: (x) async {
+            if (!context.mounted) return;
             setState(() => _vehicleId = x);
             await _refreshHistory();
           },

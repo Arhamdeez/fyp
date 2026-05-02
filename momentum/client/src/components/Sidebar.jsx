@@ -9,10 +9,17 @@ const navItems = [
   { to: "/settings", label: "Settings" }
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ variant = "desktop", isOpen = false, onClose }) => {
   const location = useLocation();
-  return (
-    <aside style={{ width: 240, borderRight: "1px solid #e2e8f0", padding: 16 }}>
+  const body = (
+    <aside
+      className={variant === "mobile" ? "sidebarDrawer" : undefined}
+      style={
+        variant === "desktop"
+          ? { width: 240, borderRight: "1px solid #e2e8f0", padding: 16, background: "white" }
+          : { padding: 16 }
+      }
+    >
       <h2>Momentum</h2>
       <p style={{ color: "#64748b" }}>Smart Insights</p>
       <nav style={{ display: "grid", gap: 8, marginTop: 24 }}>
@@ -20,6 +27,7 @@ const Sidebar = () => {
           <Link
             key={item.to}
             to={item.to}
+            onClick={() => onClose?.()}
             style={{
               padding: "8px 12px",
               borderRadius: 8,
@@ -33,6 +41,16 @@ const Sidebar = () => {
         ))}
       </nav>
     </aside>
+  );
+
+  if (variant !== "mobile") return body;
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="sidebarOverlay" onClick={() => onClose?.()} role="presentation" />
+      {body}
+    </>
   );
 };
 
