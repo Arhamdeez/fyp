@@ -1,6 +1,21 @@
 # momentum_mobile
 
-A new Flutter project.
+Flutter client for Momentum. OBD/ELM327 data is read on the **device**; the app sends it to your backend over HTTP.
+
+## API URL (dev)
+
+| Where you run the app | Set `MOMENTUM_API_BASE` to |
+|------------------------|----------------------------|
+| **Android emulator** (server on same PC) | Omitted — defaults to `http://10.0.2.2:5001/api` |
+| **Physical phone** (laptop on same Wi‑Fi) | `http://<your-pc-lan-ip>:5001/api` |
+
+Example (replace with your PC’s address from System Settings / `ipconfig`):
+
+```bash
+flutter run --dart-define=MOMENTUM_API_BASE=http://192.168.1.42:5001/api
+```
+
+Bluetooth to the ELM327 dongle does **not** go through the laptop — only REST calls do.
 
 ## Getting Started
 

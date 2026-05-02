@@ -1,0 +1,14 @@
+# Start MongoDB locally when Docker Desktop is running:
+#   cd momentum && docker compose up -d
+services:
+  mongo:
+    image: mongo:7
+    container_name: momentum-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - momentum_mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  momentum_mongo_data:
