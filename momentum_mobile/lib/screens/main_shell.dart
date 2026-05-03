@@ -22,10 +22,12 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  late final List<Widget> _tabs;
 
   @override
-  Widget build(BuildContext context) {
-    final tabs = <Widget>[
+  void initState() {
+    super.initState();
+    _tabs = <Widget>[
       DashboardTab(api: widget.api),
       VehicleTab(api: widget.api),
       const ObdTab(),
@@ -33,7 +35,10 @@ class _MainShellState extends State<MainShell> {
       RoutesTab(api: widget.api),
       RecommendationsTab(api: widget.api),
     ];
+  }
 
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return ListenableBuilder(
@@ -71,7 +76,10 @@ class _MainShellState extends State<MainShell> {
               ),
             ],
           ),
-          body: tabs[_index],
+          body: IndexedStack(
+            index: _index,
+            children: _tabs,
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
