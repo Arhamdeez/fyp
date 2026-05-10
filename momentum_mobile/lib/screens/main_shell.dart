@@ -46,17 +46,41 @@ class _MainShellState extends State<MainShell> {
       builder: (context, _) {
         final obd = ObdLiveStore.instance;
         final obdLive = obd.elmConnected;
+        final statusText = obdLive ? 'OBD connected' : 'OBD not connected';
+        final statusIcon = obdLive ? Icons.bluetooth_connected : Icons.bluetooth_disabled;
         return Scaffold(
           appBar: AppBar(
             title: const Text('Momentum'),
             actions: [
-              if (obdLive)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Center(
-                    child: Icon(Icons.bluetooth_connected, color: scheme.primary, semanticLabel: 'OBD connected'),
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: obdLive ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        statusIcon,
+                        size: 16,
+                        color: obdLive ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        statusText,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: obdLive ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
               IconButton(
                 tooltip: 'API base',
                 onPressed: () => showDialog<void>(

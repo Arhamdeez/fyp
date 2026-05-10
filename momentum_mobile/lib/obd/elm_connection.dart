@@ -9,7 +9,8 @@ class ElmConnection {
   BluetoothConnection? _connection;
   StreamSubscription<Uint8List>? _subscription;
   String _partial = '';
-  final StreamController<String> _lineController = StreamController<String>.broadcast();
+  final StreamController<String> _lineController =
+      StreamController<String>.broadcast();
 
   /// Called when the RFCOMM link drops (dongle sleep, out of range, ignition off, etc.).
   void Function()? onDisconnected;
@@ -17,6 +18,14 @@ class ElmConnection {
   Stream<String> get lines => _lineController.stream;
 
   bool get isConnected => _connection?.isConnected ?? false;
+
+  Future<void> _safeDisconnectFromSocketEvent() async {
+    try {
+      await disconnect();
+    } catch (_) {
+      // Ignore teardown errors from remote socket closure.
+    }
+  }
 
   void _onData(Uint8List data) {
     _partial += ascii.decode(data, allowInvalid: true);
@@ -34,11 +43,25 @@ class ElmConnection {
 
   Future<void> connect(String address) async {
     await disconnect();
-    _connection = await BluetoothConnection.toAddress(address);
+    try {
+      _connection = await BluetoothConnection.toAddress(
+        address,
+      ).timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      // Some adapters are slow to wake; retry once before failing.
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      _connection = await BluetoothConnection.toAddress(
+        address,
+      ).timeout(const Duration(seconds: 12));
+    }
     _subscription = _connection!.input!.listen(
       _onData,
-      onError: (_) => disconnect(),
-      onDone: disconnect,
+      onError: (_) {
+        unawaited(_safeDisconnectFromSocketEvent());
+      },
+      onDone: () {
+        unawaited(_safeDisconnectFromSocketEvent());
+      },
       cancelOnError: true,
     );
   }
@@ -58,9 +81,13 @@ class ElmConnection {
   /// [notifyListeners] false when the app user chose to disconnect (no "lost link" toast).
   Future<void> disconnect({bool notifyListeners = true}) async {
     final wasConnected = isConnected;
-    await _subscription?.cancel();
+    try {
+      await _subscription?.cancel();
+    } catch (_) {}
     _subscription = null;
-    await _connection?.close();
+    try {
+      await _connection?.close();
+    } catch (_) {}
     _connection = null;
     _partial = '';
     if (wasConnected && notifyListeners) {
