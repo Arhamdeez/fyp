@@ -8,6 +8,10 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../live/obd_live_store.dart';
 import '../../obd/elm_connection.dart';
 import '../../obd/obd_pid_parse.dart';
+import '../../telemetry/ride_demo.dart';
+import '../../telemetry/ride_db.dart';
+import '../../telemetry/ride_session.dart';
+import '../last_ride_report_screen.dart';
 
 /// Live ELM327 (Bluetooth Classic) — shows raw lines from the dongle + decoded speed/RPM.
 class ObdTab extends StatefulWidget {
@@ -40,7 +44,203 @@ class _ObdTabState extends State<ObdTab> {
   DateTime? _lastSpeedAt;
   DateTime? _lastHarshBrakingAt;
 
+  RideSession? _rideSession;
+  String? _rideAdapterLabel;
+
+  _ObdGaugeSnapshot? _freezeAtSilentTripEnd;
+
+  bool _awaitingTelemetryResume = false;
+
+  DateTime _lastTelemetryMotionAt = DateTime.now();
+
+  int? _motionPrevSpeed;
+  double? _motionPrevRpm;
+  double? _motionPrevLoad;
+  double? _motionPrevCoolant;
+  double? _motionPrevThrottle;
+
+  Timer? _rideStallWatcher;
+
+  static const Duration _rideSilenceEndsTrip = Duration(seconds: 95);
+  static const Duration _minimumRecordedBeforeSilenceEnd = Duration(seconds: 42);
+  static const Duration _rideStallPollInterval = Duration(seconds: 8);
+
+  static const int _epsSpeedKph = 1;
+  static const double _epsRpm = 28;
+  static const double _epsLoad = 6;
+  static const double _epsCoolantC = 0.9;
+  static const double _epsThrottlePct = 3.5;
+
   static const int _maxLog = 350;
+
+  Future<void> _finishRidePersist({
+    bool endedByStaleTelemetry = false,
+    _ObdGaugeSnapshot? stalledTelemetryFrame,
+  }) async {
+    final session = _rideSession;
+    _rideSession = null;
+    if (session == null) return;
+
+    final rec = session.finish(
+      endedAt: DateTime.now(),
+      adapterLabel: _rideAdapterLabel,
+    );
+    final keep = rec.sampleCount >= 3 ||
+        rec.duration.inSeconds >= 8 ||
+        rec.maxSpeedKph > 5 ||
+        rec.maxRpm > 500;
+
+    if (!keep) {
+      _awaitingTelemetryResume = false;
+      _freezeAtSilentTripEnd = null;
+      return;
+    }
+    try {
+      await RideDb.instance.insertRide(rec);
+    } catch (e, stack) {
+      debugPrint('RideDb.insertRide failed: $e\n$stack');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save ride summary: $e')),
+      );
+      _awaitingTelemetryResume = false;
+      _freezeAtSilentTripEnd = null;
+      return;
+    }
+
+    if (endedByStaleTelemetry && mounted) {
+      setState(
+        () => _status =
+            'Trip saved — telemetry paused (usually ignition OFF or ECU sleep). Wake the car / restart engine '
+            'to begin a new trip while staying connected.',
+      );
+    }
+
+    if (endedByStaleTelemetry && _elm.isConnected && stalledTelemetryFrame != null) {
+      _awaitingTelemetryResume = true;
+      _freezeAtSilentTripEnd = stalledTelemetryFrame;
+    } else {
+      _awaitingTelemetryResume = false;
+      _freezeAtSilentTripEnd = null;
+    }
+  }
+
+  _ObdGaugeSnapshot _snapshotGauges() {
+    return _ObdGaugeSnapshot(
+      speed: _speedKph,
+      rpm: _rpm,
+      loadPct: _engineLoadPct,
+      coolantC: _coolantTempC,
+      throttlePct: _throttlePct,
+    );
+  }
+
+  /// Call whenever a fresh [RideSession] begins (Bluetooth connect or post-stall resume).
+  void _resetMotionAnchorsForNewTrip() {
+    _motionPrevSpeed = null;
+    _motionPrevRpm = null;
+    _motionPrevLoad = null;
+    _motionPrevCoolant = null;
+    _motionPrevThrottle = null;
+    _lastTelemetryMotionAt = DateTime.now();
+  }
+
+  void _observePidMotionAgainstPreviousPoll() {
+    if (_rideSession == null) return;
+
+    bool tick = false;
+    final s = _speedKph;
+    final r = _rpm;
+    final load = _engineLoadPct;
+    final c = _coolantTempC;
+    final th = _throttlePct;
+
+    if (!_ObdGaugeSnapshot.sameishInt(s, _motionPrevSpeed, _epsSpeedKph)) tick = true;
+    if (!_ObdGaugeSnapshot.sameishDouble(r, _motionPrevRpm, _epsRpm)) tick = true;
+    if (!_ObdGaugeSnapshot.sameishDouble(load, _motionPrevLoad, _epsLoad)) tick = true;
+    if (!_ObdGaugeSnapshot.sameishDouble(c, _motionPrevCoolant, _epsCoolantC)) tick = true;
+    if (!_ObdGaugeSnapshot.sameishDouble(th, _motionPrevThrottle, _epsThrottlePct)) tick = true;
+
+    if (tick) _lastTelemetryMotionAt = DateTime.now();
+
+    _motionPrevSpeed = s ?? _motionPrevSpeed;
+    _motionPrevRpm = r ?? _motionPrevRpm;
+    _motionPrevLoad = load ?? _motionPrevLoad;
+    _motionPrevCoolant = c ?? _motionPrevCoolant;
+    _motionPrevThrottle = th ?? _motionPrevThrottle;
+  }
+
+  bool _looksLikeTelemetryResumedAfterStale() {
+    final frozen = _freezeAtSilentTripEnd;
+    if (frozen == null) return false;
+    return frozen.gateMeaningfullyChanged(_snapshotGauges());
+  }
+
+  void _attemptResumeRideAfterSilentEnd() {
+    if (!_elm.isConnected || !_awaitingTelemetryResume) return;
+    if (_freezeAtSilentTripEnd == null || _rideSession != null) return;
+    if (!_looksLikeTelemetryResumedAfterStale()) return;
+
+    _awaitingTelemetryResume = false;
+    _freezeAtSilentTripEnd = null;
+    _rideSession = RideSession();
+    _resetMotionAnchorsForNewTrip();
+    if (mounted) {
+      setState(
+        () => _status =
+            'Recording new trip — telemetry is updating again. Drive safely.',
+      );
+    }
+  }
+
+  void _evaluateSilentTelemetryTripEnd() {
+    if (!_elm.isConnected) return;
+
+    /// Only auto-close while we are accumulating a ride, not already waiting on resume.
+    final session = _rideSession;
+    if (session == null || _awaitingTelemetryResume) return;
+
+    final now = DateTime.now();
+    if (now.difference(session.startedAt) < _minimumRecordedBeforeSilenceEnd) return;
+
+    if (now.difference(_lastTelemetryMotionAt) < _rideSilenceEndsTrip) return;
+
+    final stalledSnap = _snapshotGauges();
+    unawaited(_finishRidePersist(endedByStaleTelemetry: true, stalledTelemetryFrame: stalledSnap));
+  }
+
+  void _startRideStallWatcher() {
+    _rideStallWatcher?.cancel();
+    _rideStallWatcher = Timer.periodic(_rideStallPollInterval, (_) {
+      try {
+        _evaluateSilentTelemetryTripEnd();
+      } catch (_) {
+        /* non-fatal */
+      }
+    });
+  }
+
+  void _stopRideStallWatcher() {
+    _rideStallWatcher?.cancel();
+    _rideStallWatcher = null;
+  }
+
+  Future<void> _saveDemoRide(String mode) async {
+    final rec = mode == 'harsh' ? RideDemo.stressful() : RideDemo.smooth();
+    try {
+      await RideDb.instance.insertRide(rec);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demo ride saved — open Last ride to view')),
+      );
+    } catch (e, stack) {
+      debugPrint('Demo insert failed: $e\n$stack');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Demo save failed: $e')),
+      );
+    }
+  }
 
   String? _adapterShortLabel(BluetoothDevice? d) {
     if (d == null) return null;
@@ -71,6 +271,7 @@ class _ObdTabState extends State<ObdTab> {
 
   @override
   void dispose() {
+    _stopRideStallWatcher();
     _pollTimer?.cancel();
     _lineSub?.cancel();
     _elm.dispose();
@@ -264,6 +465,21 @@ class _ObdTabState extends State<ObdTab> {
           harshBraking: _harshBraking,
         );
       }
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      if (!mounted || !_elm.isConnected) return;
+
+      _attemptResumeRideAfterSilentEnd();
+      _observePidMotionAgainstPreviousPoll();
+
+      final session = _rideSession;
+      if (session != null) {
+        session.ingestPollSnapshot(
+          now: DateTime.now(),
+          speedKph: _speedKph,
+          rpm: _rpm,
+          engineLoadPct: _engineLoadPct,
+        );
+      }
     } finally {
       _polling = false;
     }
@@ -297,8 +513,13 @@ class _ObdTabState extends State<ObdTab> {
 
       _elm.onDisconnected = () {
         if (!mounted) return;
+        _stopRideStallWatcher();
         _pollTimer?.cancel();
         _pollTimer = null;
+        _awaitingTelemetryResume = false;
+        _freezeAtSilentTripEnd = null;
+        unawaited(_finishRidePersist());
+        _rideAdapterLabel = null;
         ObdLiveStore.instance.updateFromObd(
           connected: false,
           speed: null,
@@ -313,6 +534,13 @@ class _ObdTabState extends State<ObdTab> {
       await _elm.connect(dev.address);
 
       if (!mounted) return;
+
+      _rideAdapterLabel = _adapterShortLabel(dev);
+      _freezeAtSilentTripEnd = null;
+      _awaitingTelemetryResume = false;
+      _rideSession = RideSession();
+      _resetMotionAnchorsForNewTrip();
+      _startRideStallWatcher();
 
       _lineSub = _elm.lines.listen(_appendLog);
 
@@ -337,7 +565,8 @@ class _ObdTabState extends State<ObdTab> {
 
       setState(
         () => _status =
-            'Live — polling speed, RPM, load, coolant temp, intake temp, and throttle. Ignition ON helps.',
+            'Live — polling PIDs. Trip recording runs while gauges keep changing; when ignition turns OFF and '
+            'readings go flat for ~95s, your last trip is saved (Bluetooth can stay on).',
       );
       ObdLiveStore.instance.updateFromObd(
         connected: true,
@@ -362,6 +591,11 @@ class _ObdTabState extends State<ObdTab> {
         }
       });
     } catch (e) {
+      _stopRideStallWatcher();
+      await _finishRidePersist();
+      _rideAdapterLabel = null;
+      _awaitingTelemetryResume = false;
+      _freezeAtSilentTripEnd = null;
       ObdLiveStore.instance.updateFromObd(
         connected: false,
         speed: null,
@@ -378,6 +612,11 @@ class _ObdTabState extends State<ObdTab> {
   }
 
   Future<void> _disconnect() async {
+    _stopRideStallWatcher();
+    await _finishRidePersist();
+    _awaitingTelemetryResume = false;
+    _freezeAtSilentTripEnd = null;
+    _rideAdapterLabel = null;
     _pollTimer?.cancel();
     _pollTimer = null;
     await _lineSub?.cancel();
@@ -409,15 +648,51 @@ class _ObdTabState extends State<ObdTab> {
   @override
   Widget build(BuildContext context) {
     if (!Platform.isAndroid) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
             'OBD-II over Bluetooth Classic is implemented for Android only.\n'
             'Use an Android phone with a paired ELM327 adapter.',
+            style: Theme.of(context).textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
-        ),
+          const SizedBox(height: 20),
+          Text(
+            'You can still try ride summaries:',
+            style: Theme.of(context).textTheme.titleSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _saveDemoRide('smooth'),
+                icon: const Icon(Icons.directions_car_outlined),
+                label: const Text('Demo · smooth'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _saveDemoRide('harsh'),
+                icon: const Icon(Icons.report_gmailerrorred_outlined),
+                label: const Text('Demo · harsh'),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LastRideReportScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history_edu_outlined),
+                label: const Text('Last ride'),
+              ),
+            ],
+          ),
+        ],
       );
     }
 
@@ -426,9 +701,41 @@ class _ObdTabState extends State<ObdTab> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Text(
-            'ELM327 live',
-            style: Theme.of(context).textTheme.titleMedium,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'ELM327 live',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Tooltip(
+                message: 'Save a fake ride to test summaries',
+                child: PopupMenuButton<String>(
+                  onSelected: (v) => unawaited(_saveDemoRide(v)),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'smooth', child: Text('Demo · smooth')),
+                    PopupMenuItem(value: 'harsh', child: Text('Demo · harsh')),
+                  ],
+                  icon: Icon(
+                    Icons.science_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LastRideReportScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history_edu_outlined),
+                label: const Text('Last ride'),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -777,5 +1084,59 @@ class _ObdTabState extends State<ObdTab> {
         ),
       ],
     );
+  }
+}
+
+/// Immutable gauge frame for comparing successive poll snapshots (frozen ECU vs live again).
+class _ObdGaugeSnapshot {
+  const _ObdGaugeSnapshot({
+    required this.speed,
+    required this.rpm,
+    required this.loadPct,
+    required this.coolantC,
+    required this.throttlePct,
+  });
+
+  final int? speed;
+  final double? rpm;
+  final double? loadPct;
+  final double? coolantC;
+  final double? throttlePct;
+
+  static bool sameishInt(int? a, int? b, int eps) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (a - b).abs() < eps;
+  }
+
+  static bool sameishDouble(double? a, double? b, double eps) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (a - b).abs() < eps;
+  }
+
+  bool gateMeaningfullyChanged(_ObdGaugeSnapshot live) {
+    if (_meaningfulGaugeMove(speed?.toDouble(), live.speed?.toDouble(), resumeThSpeedKph)) return true;
+    if (_meaningfulGaugeMove(rpm, live.rpm, resumeThRpm)) return true;
+    if (_meaningfulGaugeMove(loadPct, live.loadPct, resumeThLoad)) return true;
+    if (_meaningfulGaugeMove(coolantC, live.coolantC, resumeThCoolantC)) return true;
+    if (_meaningfulGaugeMove(throttlePct, live.throttlePct, resumeThThrottlePct)) return true;
+    return false;
+  }
+
+  /// Enough change vs the stalled frame to treat as ECM / ignition waking up again (tunable).
+  static const double resumeThSpeedKph = 10;
+  static const double resumeThRpm = 85;
+  static const double resumeThLoad = 15;
+  static const double resumeThCoolantC = 3;
+  static const double resumeThThrottlePct = 10;
+
+  /// True when the live PID clearly diverged vs the stalled frame, or gauges reappear.
+  static bool _meaningfulGaugeMove(double? stalled, double? live, double th) {
+    if (stalled != null && live != null && (stalled - live).abs() >= th) return true;
+    final stalledNull = stalled == null;
+    final liveNull = live == null;
+    if ((!stalledNull && liveNull) || (stalledNull && !liveNull)) return true;
+    return false;
   }
 }

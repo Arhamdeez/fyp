@@ -28,7 +28,7 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _tabs = <Widget>[
-      DashboardTab(api: widget.api),
+      DashboardTab(api: widget.api, onNavigateToTab: (i) => setState(() => _index = i)),
       VehicleTab(api: widget.api),
       const ObdTab(),
       AnalysisTab(api: widget.api),

@@ -151,10 +151,10 @@ class MomentumApi {
     await _jsonOrThrow(r);
   }
 
-  Future<List<dynamic>> vehicleData(String vehicleId) async {
+  Future<List<dynamic>> vehicleData(String vehicleId, {int limit = 100}) async {
     late final http.Response r;
     try {
-      r = await _get('/vehicle-data/$vehicleId?limit=100');
+      r = await _get('/vehicle-data/$vehicleId?limit=$limit');
     } on TimeoutException {
       throw ApiException('Request timed out — check network and API URL.', statusCode: null);
     }
@@ -211,8 +211,8 @@ class MomentumApi {
       body: {
         'dest_lat': destLat,
         'dest_lng': destLng,
-        if (originLat != null) 'origin_lat': originLat,
-        if (originLng != null) 'origin_lng': originLng,
+        'origin_lat': ?originLat,
+        'origin_lng': ?originLng,
       },
     );
     return _jsonOrThrow(r);
@@ -233,8 +233,8 @@ class MomentumApi {
         'origin_lng': oLng,
         'dest_lat': dLat,
         'dest_lng': dLng,
-        if (label != null) 'label': label,
-        if (departWindow != null) 'depart_window': departWindow,
+        'label': ?label,
+        'depart_window': ?departWindow,
       },
     );
     await _jsonOrThrow(r);
@@ -268,11 +268,34 @@ class MomentumApi {
   }
 
   Future<List<dynamic>> listRecommendations() async {
-    final r = await _get('/recommendations');
+    final r = await _get('/recommendations/vehicle');
     final raw = jsonDecode(r.body);
     if (r.statusCode >= 200 && r.statusCode < 300) {
       return raw as List<dynamic>;
     }
     throw ApiException(raw.toString(), statusCode: r.statusCode);
+  }
+
+  /// Server: `GET /recommendations/maintenance/:vehicleId`
+  Future<List<dynamic>> maintenanceRecommendations(String vehicleId) async {
+    final id = Uri.encodeComponent(vehicleId);
+    late final http.Response r;
+    try {
+      r = await _get('/recommendations/maintenance/$id');
+    } on TimeoutException {
+      return const [];
+    }
+    Object? raw;
+    try {
+      raw = r.body.isEmpty ? const <dynamic>[] : jsonDecode(r.body);
+    } catch (_) {
+      return const [];
+    }
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      if (raw is List<dynamic>) return raw;
+      if (raw is List) return raw;
+      return const [];
+    }
+    return const [];
   }
 }
