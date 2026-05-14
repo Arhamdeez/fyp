@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 
-const Duration _kHttpTimeout = Duration(seconds: 10);
+const Duration _kHttpTimeout = Duration(seconds: 25);
 
 String _sanitizeBaseUrl(String raw) => raw.trim().replaceAll(RegExp(r'\s+'), '');
 
