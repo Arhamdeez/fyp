@@ -128,6 +128,15 @@ class MomentumApi {
     return _jsonOrThrow(r);
   }
 
+  Future<void> deleteVehicle(String vehicleId) async {
+    final r = await http.delete(
+      Uri.parse('$baseUrl/vehicles/$vehicleId'),
+      headers: _headers,
+    ).timeout(_kHttpTimeout);
+    if (r.statusCode >= 200 && r.statusCode < 300) return;
+    throw ApiException('Failed to delete vehicle: ${r.body}', statusCode: r.statusCode);
+  }
+
   Future<void> postVehicleData({
     required String vehicleId,
     required double speed,
