@@ -13,6 +13,7 @@ import '../../telemetry/ride_demo.dart';
 import '../../telemetry/ride_db.dart';
 import '../../telemetry/ride_session.dart';
 import '../last_ride_report_screen.dart';
+import '../obd_trouble_codes_screen.dart';
 
 /// Live ELM327 (Bluetooth Classic) — shows raw lines from the dongle + decoded speed/RPM.
 class ObdTab extends StatefulWidget {
@@ -73,6 +74,36 @@ class _ObdTabState extends State<ObdTab> {
   static const double _epsThrottlePct = 3.5;
 
   static const int _maxLog = 350;
+
+  void _stopPollTimer() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  void _startPollTimer() {
+    _stopPollTimer();
+    if (!_elm.isConnected) return;
+    _pollTimer =
+        Timer.periodic(const Duration(milliseconds: 650), (_) async {
+      try {
+        await _pollOnce();
+      } catch (e) {
+        if (mounted) {
+          setState(() => _status = 'Poll error: ${_friendlyError(e)}');
+        }
+      }
+    });
+  }
+
+  Future<void> _openTroubleCodes() async {
+    if (!_elm.isConnected || _busy) return;
+    _stopPollTimer();
+    try {
+      await ObdTroubleCodesScreen.open(context, elm: _elm);
+    } finally {
+      if (mounted) _startPollTimer();
+    }
+  }
 
   Future<void> _finishRidePersist({
     bool endedByStaleTelemetry = false,
@@ -273,7 +304,7 @@ class _ObdTabState extends State<ObdTab> {
   @override
   void dispose() {
     _stopRideStallWatcher();
-    _pollTimer?.cancel();
+    _stopPollTimer();
     _lineSub?.cancel();
     _elm.dispose();
     super.dispose();
@@ -510,13 +541,12 @@ class _ObdTabState extends State<ObdTab> {
       await _ensureBluetoothOn();
 
       await _lineSub?.cancel();
-      _pollTimer?.cancel();
+      _stopPollTimer();
 
       _elm.onDisconnected = () {
         if (!mounted) return;
         _stopRideStallWatcher();
-        _pollTimer?.cancel();
-        _pollTimer = null;
+        _stopPollTimer();
         _awaitingTelemetryResume = false;
         _freezeAtSilentTripEnd = null;
         unawaited(_finishRidePersist());
@@ -582,15 +612,7 @@ class _ObdTabState extends State<ObdTab> {
       );
 
       await _pollOnce();
-      _pollTimer = Timer.periodic(const Duration(milliseconds: 650), (_) async {
-        try {
-          await _pollOnce();
-        } catch (e) {
-          if (mounted) {
-            setState(() => _status = 'Poll error: ${_friendlyError(e)}');
-          }
-        }
-      });
+      _startPollTimer();
     } catch (e) {
       _stopRideStallWatcher();
       await _finishRidePersist();
@@ -618,8 +640,7 @@ class _ObdTabState extends State<ObdTab> {
     _awaitingTelemetryResume = false;
     _freezeAtSilentTripEnd = null;
     _rideAdapterLabel = null;
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _stopPollTimer();
     await _lineSub?.cancel();
     _lineSub = null;
     _elm.onDisconnected = null;
@@ -719,6 +740,50 @@ class _ObdTabState extends State<ObdTab> {
                   icon: Icon(
                     Icons.science_outlined,
                     color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Tooltip(
+                message:
+                    _elm.isConnected ? 'Car issues · trouble codes' : 'Connect OBD first',
+                child: Material(
+                  color: (_busy || !_elm.isConnected)
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withValues(alpha: 0.95),
+                  clipBehavior: Clip.antiAlias,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _busy
+                        ? null
+                        : () async {
+                            if (!_elm.isConnected) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Connect your OBD adapter first (tap Connect & read below).',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            await _openTroubleCodes();
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.all(13),
+                      child: Icon(
+                        Icons.report_problem_rounded,
+                        size: 26,
+                        color: _elm.isConnected && !_busy
+                            ? Theme.of(context).colorScheme.onErrorContainer
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
