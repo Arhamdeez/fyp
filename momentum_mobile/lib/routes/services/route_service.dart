@@ -85,8 +85,8 @@ class RouteService {
     return [
       _buildRoute(
         type: RouteType.fastest,
-        title: 'Fastest Route',
-        subtitle: 'Shortest travel time',
+        title: 'Fastest',
+        subtitle: 'Shortest time',
         distanceKm: distanceKm * 1.0,
         baseEta: baseEta,
         trafficMultiplier: 1.0,
@@ -98,34 +98,34 @@ class RouteService {
       ),
       _buildRoute(
         type: RouteType.eco,
-        title: 'Eco-Friendly Route',
-        subtitle: 'Saves fuel & reduces emissions',
+        title: 'Eco',
+        subtitle: 'Steadier pace',
         distanceKm: distanceKm * 1.08,
         baseEta: (baseEta * 1.12).round(),
         trafficMultiplier: 0.7,
         weather: weather,
         traffic: _lowerTraffic(traffic),
-        drivingTip: 'Maintain steady speed to maximise fuel efficiency.',
+        drivingTip: 'Hold a steady speed to save fuel.',
         originName: originName,
         destName: destName,
       ),
       _buildRoute(
         type: RouteType.leastTraffic,
-        title: 'Least Traffic Route',
-        subtitle: 'Avoid congestion & delays',
+        title: 'Less traffic',
+        subtitle: 'Fewer jams (estimate)',
         distanceKm: distanceKm * 1.15,
         baseEta: (baseEta * 0.95).round(),
         trafficMultiplier: 0.4,
         weather: weather,
         traffic: _minTraffic(traffic),
-        drivingTip: 'Side roads are clear — enjoy the smooth drive.',
+        drivingTip: 'Side roads are often quieter.',
         originName: originName,
         destName: destName,
       ),
       _buildRoute(
         type: RouteType.recommended,
-        title: 'Recommended Route',
-        subtitle: 'Best balance of speed & safety',
+        title: 'Recommended',
+        subtitle: 'Balanced',
         distanceKm: distanceKm * 1.05,
         baseEta: (baseEta * 1.03).round(),
         trafficMultiplier: 0.85,
@@ -155,12 +155,7 @@ class RouteService {
     required String destName,
     bool boostedScore = false,
   }) {
-    final vehicleRec = _recommendVehicle(
-      distanceKm: distanceKm,
-      weather: weather,
-      traffic: traffic,
-      isEco: type == RouteType.eco,
-    );
+    final vehicleRec = VehicleRecommendation.prototype();
 
     final safetyScore = _calcSafety(weather, traffic);
     final smartScore = _calcSmartScore(
@@ -188,74 +183,6 @@ class RouteService {
       drivingTip: drivingTip,
       originName: originName,
       destName: destName,
-    );
-  }
-
-  VehicleRecommendation _recommendVehicle({
-    required double distanceKm,
-    required WeatherInfo weather,
-    required TrafficInfo traffic,
-    required bool isEco,
-  }) {
-    // Rain → always recommend car
-    if (weather.isRaining) {
-      return const VehicleRecommendation(
-        vehicle: VehicleType.car,
-        reason: 'Rainy conditions — car provides shelter and safety',
-        confidence: 0.95,
-      );
-    }
-
-    // Walking distance
-    if (distanceKm < 0.8) {
-      return const VehicleRecommendation(
-        vehicle: VehicleType.walk,
-        reason: 'Very short distance — walking is fastest',
-        confidence: 0.9,
-      );
-    }
-
-    // Eco route → prefer bicycle/motorcycle
-    if (isEco && distanceKm < 8) {
-      return const VehicleRecommendation(
-        vehicle: VehicleType.bicycle,
-        reason: 'Eco route — zero emissions, no traffic',
-        confidence: 0.85,
-      );
-    }
-
-    // Short + clear → motorcycle
-    if (distanceKm < 12 && !weather.isHazardous) {
-      if (traffic.level == TrafficLevel.heavy) {
-        return const VehicleRecommendation(
-          vehicle: VehicleType.motorcycle,
-          reason: 'Heavy traffic — motorcycle can navigate gaps efficiently',
-          confidence: 0.88,
-        );
-      }
-      return const VehicleRecommendation(
-        vehicle: VehicleType.motorcycle,
-        reason: 'Short urban distance — motorcycle is quick and fuel-efficient',
-        confidence: 0.82,
-      );
-    }
-
-    // Long distance or bad conditions → car
-    if (distanceKm > 30 || weather.isHazardous) {
-      return VehicleRecommendation(
-        vehicle: VehicleType.car,
-        reason: distanceKm > 30
-            ? 'Long distance — car provides comfort and fuel efficiency'
-            : 'Adverse conditions — car is safest option',
-        confidence: 0.9,
-      );
-    }
-
-    // Default moderate → car
-    return const VehicleRecommendation(
-      vehicle: VehicleType.car,
-      reason: 'Balanced choice for this route distance and conditions',
-      confidence: 0.75,
     );
   }
 

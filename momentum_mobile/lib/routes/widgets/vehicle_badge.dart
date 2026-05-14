@@ -22,16 +22,19 @@ class VehicleBadge extends StatelessWidget {
         VehicleType.walk => Icons.directions_walk_rounded,
       };
 
-  Color _color() => switch (rec.vehicle) {
-        VehicleType.bicycle => const Color(0xFF16A34A),
-        VehicleType.motorcycle => const Color(0xFF7C3AED),
-        VehicleType.car => const Color(0xFF0D9488),
-        VehicleType.walk => const Color(0xFF2563EB),
-      };
+  Color _color(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return switch (rec.vehicle) {
+      VehicleType.bicycle => scheme.tertiary,
+      VehicleType.motorcycle => scheme.secondary,
+      VehicleType.car => scheme.primary,
+      VehicleType.walk => scheme.primary,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final color = _color();
+    final color = _color(context);
     final iconSize = large ? 28.0 : 18.0;
     final fontSize = large ? 13.0 : 11.0;
     final pad = large

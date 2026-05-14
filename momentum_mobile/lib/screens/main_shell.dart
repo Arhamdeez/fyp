@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/momentum_api.dart';
+import '../motion/app_motion.dart';
 import '../live/obd_live_store.dart';
 import '../session.dart';
 import 'tabs/analysis_tab.dart';
@@ -102,7 +103,13 @@ class _MainShellState extends State<MainShell> {
           ),
           body: IndexedStack(
             index: _index,
-            children: _tabs,
+            children: [
+              for (var i = 0; i < _tabs.length; i++)
+                TabEntrance(
+                  active: _index == i,
+                  child: _tabs[i],
+                ),
+            ],
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../api/momentum_api.dart';
+import '../../motion/app_motion.dart';
 import '../../routes/models/route_model.dart';
 import '../../routes/models/saved_route.dart';
 import '../../routes/stores/routes_store.dart';
@@ -55,7 +56,7 @@ class _RoutesTabState extends State<RoutesTab>
       listenable: _store,
       builder: (context, _) {
         return Scaffold(
-          backgroundColor: scheme.surfaceContainerLow,
+          backgroundColor: scheme.surface,
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
@@ -66,7 +67,7 @@ class _RoutesTabState extends State<RoutesTab>
                 pinned: true,
                 floating: false,
                 expandedHeight: 0,
-                backgroundColor: scheme.surfaceContainerLow,
+                backgroundColor: scheme.surface,
                 surfaceTintColor: Colors.transparent,
                 title: const _RoutesHeader(),
                 centerTitle: false,
@@ -88,7 +89,11 @@ class _RoutesTabState extends State<RoutesTab>
               // ── Body content ────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
+                  duration: const Duration(milliseconds: 420),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) =>
+                      fadeSlideSwitcherChild(animation, child),
                   child: _buildBody(scheme),
                 ),
               ),
@@ -131,7 +136,6 @@ class _RoutesTabState extends State<RoutesTab>
         routes: _store.routes,
         selectedRoute: _store.selectedRoute,
         onTap: _onCardTap,
-        onFavorite: (r) => _store.saveCurrentRoute(r),
       );
     }
 
@@ -179,35 +183,13 @@ class _RoutesHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [scheme.primary, scheme.tertiary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.route_rounded, color: Colors.white, size: 20),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Smart Routes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              'AI-powered travel intelligence',
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w400,
+        Icon(Icons.alt_route_rounded, color: scheme.primary, size: 26),
+        const SizedBox(width: 12),
+        Text(
+          'Routes',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-            ),
-          ],
         ),
       ],
     );
@@ -218,68 +200,123 @@ class _RoutesHeader extends StatelessWidget {
 // _RouteResults
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RouteResults extends StatelessWidget {
+class _RouteResults extends StatefulWidget {
   const _RouteResults({
     super.key,
     required this.routes,
     required this.selectedRoute,
     required this.onTap,
-    required this.onFavorite,
   });
 
   final List<RouteOption> routes;
   final RouteOption? selectedRoute;
   final void Function(RouteOption) onTap;
-  final Future<SavedRoute?> Function(RouteOption) onFavorite;
+
+  @override
+  State<_RouteResults> createState() => _RouteResultsState();
+}
+
+class _RouteResultsState extends State<_RouteResults>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _entrance;
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 540),
+    )..forward();
+  }
+
+  @override
+  void didUpdateWidget(_RouteResults oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameRouteList(widget.routes, oldWidget.routes)) {
+      _entrance.forward(from: 0);
+    }
+  }
+
+  static bool _sameRouteList(List<RouteOption> a, List<RouteOption> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].type != b[i].type) return false;
+    }
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    super.dispose();
+  }
+
+  Widget _staggerCard(int index, RouteOption route) {
+    final delay = (index * 0.12).clamp(0.0, 0.5);
+    final end = (delay + 0.45).clamp(0.0, 1.0);
+    final anim = CurvedAnimation(
+      parent: _entrance,
+      curve: Interval(delay, end, curve: Curves.easeOutCubic),
+    );
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.06, 0),
+          end: Offset.zero,
+        ).animate(anim),
+        child: RouteCard(
+          key: ValueKey(route.type),
+          route: route,
+          isSelected: widget.selectedRoute?.type == route.type,
+          onTap: () => widget.onTap(route),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final routes = widget.routes;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Results header
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
           child: Row(
             children: [
               Text(
-                '${routes.length} Routes Found',
+                '${routes.length} options',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
+                  color: scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: scheme.outlineVariant),
                 ),
                 child: Text(
-                  'Tap to expand',
+                  'Tap card',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: scheme.onPrimaryContainer,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ),
             ],
           ),
         ),
-
-        // Route cards
-        for (int i = 0; i < routes.length; i++)
-          RouteCard(
-            key: ValueKey(routes[i].type),
-            route: routes[i],
-            isSelected: selectedRoute?.type == routes[i].type,
-            onTap: () => onTap(routes[i]),
-            onFavorite: () => onFavorite(routes[i]),
-          ),
+        for (var i = 0; i < routes.length; i++) _staggerCard(i, routes[i]),
       ],
     );
   }
@@ -337,7 +374,7 @@ class _SavedRoutesSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'No saved routes yet.\nSearch a route and bookmark it.',
+                    'No saved routes.\nBookmark one from results.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
@@ -350,7 +387,7 @@ class _SavedRoutesSheet extends StatelessWidget {
               _SavedSectionHeader(
                 icon: Icons.bookmark_rounded,
                 label: 'Favourites',
-                color: const Color(0xFFF59E0B),
+                color: scheme.secondary,
               ),
               const SizedBox(height: 8),
               for (final r in saved)

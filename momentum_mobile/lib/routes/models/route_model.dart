@@ -37,6 +37,7 @@ class WeatherInfo {
     required this.rainMmPerHour,
     required this.iconCode,
     required this.description,
+    this.isAvailable = true,
   });
 
   final String condition;      // e.g. "Clear", "Rain", "Fog"
@@ -45,14 +46,19 @@ class WeatherInfo {
   final double rainMmPerHour;
   final String iconCode;       // OWM icon code e.g. "01d"
   final String description;   // human-readable
+  /// False when no API key, network error, or empty response.
+  final bool isAvailable;
 
-  bool get isRaining => rainMmPerHour > 0.5;
-  bool get isFoggy => condition.toLowerCase().contains('fog') ||
-      condition.toLowerCase().contains('mist') ||
-      condition.toLowerCase().contains('haze');
-  bool get isHazardous => isRaining || isFoggy || windKph > 40;
+  bool get isRaining => isAvailable && rainMmPerHour > 0.5;
+  bool get isFoggy => isAvailable &&
+      (condition.toLowerCase().contains('fog') ||
+          condition.toLowerCase().contains('mist') ||
+          condition.toLowerCase().contains('haze'));
+  bool get isHazardous =>
+      isAvailable && (isRaining || isFoggy || windKph > 40);
 
   String get warningText {
+    if (!isAvailable) return '';
     if (rainMmPerHour > 5) return 'Heavy rain expected — drive carefully';
     if (rainMmPerHour > 0.5) return 'Light rain — roads may be slippery';
     if (isFoggy) return 'Reduced visibility — fog detected';
@@ -66,7 +72,8 @@ class WeatherInfo {
         windKph: 0,
         rainMmPerHour: 0,
         iconCode: '01d',
-        description: 'Weather unavailable',
+        description: '',
+        isAvailable: false,
       );
 }
 
@@ -107,11 +114,22 @@ class VehicleRecommendation {
     required this.vehicle,
     required this.reason,
     required this.confidence, // 0.0–1.0
+    this.isPlaceholder = false,
   });
 
   final VehicleType vehicle;
   final String reason;
   final double confidence;
+  /// UI-only: hide confidence chrome until real recommendations ship.
+  final bool isPlaceholder;
+
+  /// Static demo suggestion shown for every route variant for now.
+  static VehicleRecommendation prototype() => const VehicleRecommendation(
+        vehicle: VehicleType.car,
+        reason: 'Demo: assumes you\'re driving.',
+        confidence: 0.7,
+        isPlaceholder: true,
+      );
 
   String get vehicleLabel => switch (vehicle) {
         VehicleType.bicycle => 'Bicycle',
@@ -192,10 +210,10 @@ enum LoadingPhase {
 extension LoadingPhaseLabel on LoadingPhase {
   String get message => switch (this) {
         LoadingPhase.idle => '',
-        LoadingPhase.locating => 'Getting your location…',
-        LoadingPhase.fetchingInsights => 'Finding best routes…',
-        LoadingPhase.fetchingWeather => 'Checking weather conditions…',
-        LoadingPhase.analyzing => 'Optimizing recommendations…',
+        LoadingPhase.locating => 'Finding location…',
+        LoadingPhase.fetchingInsights => 'Loading routes…',
+        LoadingPhase.fetchingWeather => 'Checking weather…',
+        LoadingPhase.analyzing => 'Almost ready…',
         LoadingPhase.done => '',
       };
 

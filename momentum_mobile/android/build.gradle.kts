@@ -1,3 +1,6 @@
+import org.gradle.api.JavaVersion
+import org.gradle.api.tasks.compile.JavaCompile
+
 allprojects {
     repositories {
         google()
@@ -35,6 +38,13 @@ subprojects {
                 }
             setNs?.invoke(android, "io.github.edufolly.flutterbluetoothserial")
         }
+    }
+}
+
+subprojects {
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17.toString()
+        targetCompatibility = JavaVersion.VERSION_17.toString()
     }
 }
 

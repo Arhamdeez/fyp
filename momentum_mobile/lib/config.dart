@@ -37,3 +37,19 @@ String momentumApiBaseUrl() {
   // iOS Simulator / desktop: server on same machine.
   return 'http://127.0.0.1:$defaultPort/api';
 }
+
+/// Google Weather API key — enable **Weather API** on the GCP project.
+///
+/// Compile-time defines (restart app after changing):
+/// ```bash
+/// flutter run --dart-define=GOOGLE_WEATHER_KEY=your_key
+/// # or:
+/// flutter run --dart-define=WEATHER_API_KEY=your_key
+/// ```
+String googleWeatherApiKey() {
+  const primary =
+      String.fromEnvironment('GOOGLE_WEATHER_KEY', defaultValue: '');
+  if (primary.trim().isNotEmpty) return primary.trim();
+  const alt = String.fromEnvironment('WEATHER_API_KEY', defaultValue: '');
+  return alt.trim();
+}

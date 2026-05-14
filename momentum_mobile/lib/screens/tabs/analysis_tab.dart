@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/momentum_api.dart';
+import '../../motion/app_motion.dart';
 
 class AnalysisTab extends StatefulWidget {
   const AnalysisTab({super.key, required this.api});
@@ -80,11 +81,24 @@ class _AnalysisTabState extends State<AnalysisTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final scheme = Theme.of(context).colorScheme;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) =>
+          fadeSlideSwitcherChild(animation, child),
+      child: _loading
+          ? Center(
+              key: const ValueKey('analysis-loading'),
+              child: CircularProgressIndicator(color: scheme.primary),
+            )
+          : ListView(
+              key: ValueKey(
+                  'analysis-${_vehicleId}_${_history.length}'),
+              padding: const EdgeInsets.all(16),
+              children: [
         DropdownButtonFormField<String>(
           initialValue: _vehicleId,
           decoration: const InputDecoration(labelText: 'Vehicle', border: OutlineInputBorder()),
@@ -128,6 +142,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
             );
           }),
       ],
+    ),
     );
   }
 }

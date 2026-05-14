@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../api/momentum_api.dart';
@@ -10,6 +10,7 @@ import '../../live/location_store.dart';
 import '../db/route_db.dart';
 import '../models/route_model.dart';
 import '../models/saved_route.dart';
+import '../services/maps_launcher.dart';
 import '../services/places_service.dart';
 import '../services/route_service.dart';
 
@@ -253,19 +254,58 @@ class RoutesStore extends ChangeNotifier {
 
   // ── Share ────────────────────────────────────────────────────────────────
 
-  Future<void> shareRoute(RouteOption route) async {
-    final text = '''
-🗺 Route: ${route.originName} → ${route.destName}
-⏱ ETA: ${route.etaLabel}
-📍 Distance: ${route.distanceLabel}
-🚦 Traffic: ${route.traffic.levelLabel}
-🌤 Weather: ${route.weather.condition} · ${route.weather.tempC.round()}°C
-🚗 Recommended: ${route.vehicleRec.vehicleLabel}
-⭐ Smart Score: ${route.smartScore}/100
+  Future<void> shareRoute(BuildContext context, RouteOption route) async {
+    final uri = MapsLauncher.directionsUri(
+      originLat: originLat,
+      originLng: originLng,
+      destLat: destLat,
+      destLng: destLng,
+      originLabel: route.originName,
+      destLabel: route.destName,
+      mapsVariant: route.type,
+    );
 
-Shared via Momentum App''';
+    final weatherLine = route.weather.isAvailable
+        ? '${route.weather.condition} · ${route.weather.tempC.round()}°C'
+        : 'Unavailable';
 
-    await Share.share(text);
+    final text = [
+      '${route.originName} → ${route.destName}',
+      '${route.title} · ETA ${route.etaLabel} · ${route.distanceLabel}',
+      'Traffic: ${route.traffic.levelLabel}',
+      'Weather: $weatherLine',
+      '',
+      'Open in Maps:',
+      uri.toString(),
+      '',
+      'Shared from Momentum',
+    ].join('\n');
+
+    final box = context.findRenderObject();
+    Rect? shareOrigin;
+    if (box is RenderBox && box.hasSize) {
+      final offset = box.localToGlobal(Offset.zero);
+      shareOrigin = offset & box.size;
+    }
+
+    try {
+      final subject =
+          'Route: ${route.originName.split(',').first} → ${route.destName.split(',').first}';
+      if (shareOrigin != null &&
+          shareOrigin.width > 0 &&
+          shareOrigin.height > 0) {
+        await Share.share(
+          text,
+          subject: subject,
+          sharePositionOrigin: shareOrigin,
+        );
+      } else {
+        await Share.share(text, subject: subject);
+      }
+    } catch (e, st) {
+      debugPrint('shareRoute failed: $e\n$st');
+      rethrow;
+    }
   }
 
   // ── Load saved route into search ─────────────────────────────────────────

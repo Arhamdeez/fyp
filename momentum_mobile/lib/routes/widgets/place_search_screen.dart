@@ -35,11 +35,18 @@ class PlaceSearchScreen extends StatefulWidget {
           isOrigin: isOrigin,
         ),
         transitionsBuilder: (context, anim, secondaryAnim, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          final tween = Tween(begin: begin, end: end)
-              .chain(CurveTween(curve: Curves.easeOutCubic));
-          return SlideTransition(position: anim.drive(tween), child: child);
+          final curved =
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
         },
       ),
     );

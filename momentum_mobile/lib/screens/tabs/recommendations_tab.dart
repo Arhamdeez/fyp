@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/momentum_api.dart';
+import '../../motion/app_motion.dart';
 
 class RecommendationsTab extends StatefulWidget {
   const RecommendationsTab({super.key, required this.api});
@@ -81,11 +82,23 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final scheme = Theme.of(context).colorScheme;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) =>
+          fadeSlideSwitcherChild(animation, child),
+      child: _loading
+          ? Center(
+              key: const ValueKey('rec-loading'),
+              child: CircularProgressIndicator(color: scheme.primary),
+            )
+          : ListView(
+              key: ValueKey('rec-${_vehicleId}_${_items.length}'),
+              padding: const EdgeInsets.all(16),
+              children: [
         Text('Vehicle recommendations', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Text(
@@ -131,6 +144,7 @@ class _RecommendationsTabState extends State<RecommendationsTab> {
             );
           }),
       ],
+    ),
     );
   }
 }

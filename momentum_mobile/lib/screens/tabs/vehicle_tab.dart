@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../api/momentum_api.dart';
 import '../../live/obd_live_store.dart';
+import '../../motion/app_motion.dart';
 
 class VehicleTab extends StatefulWidget {
   const VehicleTab({super.key, required this.api});
@@ -199,12 +200,23 @@ class _VehicleTabState extends State<VehicleTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-
+    final scheme = Theme.of(context).colorScheme;
     final selected = _selectedId;
 
-    return Column(
-      children: [
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) =>
+          fadeSlideSwitcherChild(animation, child),
+      child: _loading
+          ? Center(
+              key: const ValueKey('vehicle-loading'),
+              child: CircularProgressIndicator(color: scheme.primary),
+            )
+          : Column(
+              key: ValueKey<String>('vehicle-${_selectedId}_${_vehicles.length}'),
+              children: [
         if (_usingDemo)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -277,6 +289,7 @@ class _VehicleTabState extends State<VehicleTab> {
                 ),
         ),
       ],
+    ),
     );
   }
 }

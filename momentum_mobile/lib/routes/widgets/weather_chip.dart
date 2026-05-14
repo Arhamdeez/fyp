@@ -45,6 +45,38 @@ class WeatherChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (!weather.isAvailable) {
+      final muted = scheme.onSurfaceVariant;
+      return Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: compact ? 4 : 6,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded,
+                size: compact ? 13 : 15, color: muted),
+            const SizedBox(width: 4),
+            Text(
+              compact ? 'No weather' : 'Weather unavailable',
+              style: TextStyle(
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w600,
+                color: muted,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final color = _color(context);
     return Container(
       padding: EdgeInsets.symmetric(

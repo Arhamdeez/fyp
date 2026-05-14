@@ -129,26 +129,42 @@ class _RouteSearchBarState extends State<RouteSearchBar>
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            color: scheme.surfaceContainerLow.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.65),
+            ),
             boxShadow: [
               BoxShadow(
-                color: scheme.shadow.withValues(alpha: 0.10),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+                color: scheme.shadow.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Origin field ─────────────────────────────────────────
+                Text(
+                  'Plan route',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.35,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Origin box ───────────────────────────────────────────
                 _SearchField(
                   controller: _originCtrl,
                   focusNode: _originFocus,
-                  hint: 'Origin',
+                  hint: 'Starting point',
+                  subtitle: 'Origin',
+                  accentColor: scheme.primary,
                   icon: Icons.trip_origin_rounded,
                   iconColor: scheme.primary,
                   onClear: () {
@@ -173,23 +189,33 @@ class _RouteSearchBarState extends State<RouteSearchBar>
                   ),
                 ),
 
-                // ── Divider + swap ───────────────────────────────────────
+                const SizedBox(height: 8),
+
+                // ── Connector + swap ─────────────────────────────────────
                 Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 10),
-                      child: Container(
-                        width: 2,
-                        height: 20,
-                        color: scheme.outlineVariant,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                scheme.outlineVariant.withValues(alpha: 0.25),
+                                scheme.outlineVariant.withValues(alpha: 0.85),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     AnimatedBuilder(
                       animation: _swapAnim,
                       builder: (_, child) => Transform.rotate(
                         angle: _swapAnim.value * 3.14159,
                         child: IconButton(
+                          visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.swap_vert_rounded),
                           color: scheme.primary,
                           tooltip: 'Swap origin & destination',
@@ -200,13 +226,17 @@ class _RouteSearchBarState extends State<RouteSearchBar>
                   ],
                 ),
 
-                // ── Destination field ────────────────────────────────────
+                const SizedBox(height: 8),
+
+                // ── Destination box ──────────────────────────────────────
                 _SearchField(
                   controller: _destCtrl,
                   focusNode: _destFocus,
-                  hint: 'Destination',
+                  hint: 'Where are you going?',
+                  subtitle: 'Destination',
+                  accentColor: scheme.error,
                   icon: Icons.location_on_rounded,
-                  iconColor: const Color(0xFFDC2626),
+                  iconColor: scheme.error,
                   onClear: () {
                     _destCtrl.clear();
                     _store.clearDest();
@@ -248,6 +278,8 @@ class _SearchField extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.hint,
+    required this.subtitle,
+    required this.accentColor,
     required this.icon,
     required this.iconColor,
     required this.onClear,
@@ -258,6 +290,8 @@ class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final String hint;
+  final String subtitle;
+  final Color accentColor;
   final IconData icon;
   final Color iconColor;
   final VoidCallback onClear;
@@ -267,44 +301,117 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: iconColor),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            readOnly: true,
-            onTap: onTap,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontSize: 13,
-                color: scheme.onSurfaceVariant,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      accentColor,
+                      accentColor.withValues(alpha: 0.55),
+                    ],
+                  ),
+                ),
               ),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                valueListenable: controller,
-                builder: (_, val, child) => val.text.isEmpty
-                    ? const SizedBox.shrink()
-                    : GestureDetector(
-                        onTap: onClear,
-                        child: Icon(
-                          Icons.cancel_rounded,
-                          size: 18,
-                          color: scheme.onSurfaceVariant,
+              Expanded(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        subtitle.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.55,
+                          color: accentColor.withValues(alpha: 0.92),
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(icon, size: 20, color: iconColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              readOnly: true,
+                              onTap: onTap,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: hint,
+                                hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                isCollapsed: true,
+                                contentPadding: EdgeInsets.zero,
+                                suffixIcon:
+                                    ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: controller,
+                                  builder: (_, val, _) => val.text.isEmpty
+                                      ? const SizedBox.shrink()
+                                      : InkWell(
+                                          onTap: onClear,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4),
+                                            child: Icon(
+                                              Icons.cancel_rounded,
+                                              size: 18,
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          trailing ?? const SizedBox.shrink(),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
-        ?trailing,
-      ],
+      ),
     );
   }
 }
@@ -366,38 +473,22 @@ class _GetRoutesButtonState extends State<_GetRoutesButton>
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: 52,
+          height: 48,
           decoration: BoxDecoration(
-            gradient: enabled
-                ? LinearGradient(
-                    colors: [scheme.primary, scheme.tertiary],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  )
-                : null,
-            color: enabled ? null : scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: enabled
-                ? [
-                    BoxShadow(
-                      color: scheme.primary.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            color: enabled ? scheme.primary : scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: widget.isLoading
-                  ? const SizedBox(
-                      key: ValueKey('loading'),
+                  ? SizedBox(
+                      key: const ValueKey('loading'),
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: Colors.white,
+                        color: scheme.onPrimary,
                       ),
                     )
                   : Row(
@@ -407,7 +498,8 @@ class _GetRoutesButtonState extends State<_GetRoutesButton>
                         Icon(
                           Icons.alt_route_rounded,
                           size: 20,
-                          color: enabled ? Colors.white : scheme.onSurfaceVariant,
+                          color:
+                              enabled ? scheme.onPrimary : scheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -415,7 +507,7 @@ class _GetRoutesButtonState extends State<_GetRoutesButton>
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: enabled ? Colors.white : scheme.onSurfaceVariant,
+                            color: enabled ? scheme.onPrimary : scheme.onSurfaceVariant,
                             letterSpacing: 0.3,
                           ),
                         ),

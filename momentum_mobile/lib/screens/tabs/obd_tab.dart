@@ -6,6 +6,7 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../live/obd_live_store.dart';
+import '../../motion/app_motion.dart';
 import '../../obd/elm_connection.dart';
 import '../../obd/obd_pid_parse.dart';
 import '../../telemetry/ride_demo.dart';
@@ -682,9 +683,7 @@ class _ObdTabState extends State<ObdTab> {
               FilledButton.icon(
                 onPressed: () {
                   Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LastRideReportScreen(),
-                    ),
+                    fadeSlidePageRoute(const LastRideReportScreen()),
                   );
                 },
                 icon: const Icon(Icons.history_edu_outlined),
@@ -727,9 +726,7 @@ class _ObdTabState extends State<ObdTab> {
               OutlinedButton.icon(
                 onPressed: () async {
                   await Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LastRideReportScreen(),
-                    ),
+                    fadeSlidePageRoute(const LastRideReportScreen()),
                   );
                 },
                 icon: const Icon(Icons.history_edu_outlined),

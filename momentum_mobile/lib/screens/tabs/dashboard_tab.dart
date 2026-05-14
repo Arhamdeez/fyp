@@ -4,6 +4,7 @@ import '../../api/momentum_api.dart';
 import '../../dashboard/vehicle_insights.dart';
 import '../../live/location_store.dart';
 import '../../live/obd_live_store.dart';
+import '../../motion/app_motion.dart';
 import '../../telemetry/ride_db.dart';
 import '../../telemetry/ride_record.dart';
 import '../last_ride_report_screen.dart';
@@ -134,9 +135,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
   Future<void> _openLastRide() async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => const LastRideReportScreen(),
-      ),
+      fadeSlidePageRoute(const LastRideReportScreen()),
     );
     if (!mounted) return;
     RideRecord? ride;
@@ -159,14 +158,32 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-
     final scheme = Theme.of(context).colorScheme;
     final tab = widget.onNavigateToTab;
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) =>
+          fadeSlideSwitcherChild(animation, child),
+      child: _loading
+          ? Center(
+              key: const ValueKey('dash-loading'),
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: scheme.primary,
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              key: ValueKey(
+                  'dash-body-${_vehicles.length}-${_lastRide?.startedAt.millisecondsSinceEpoch ?? 0}'),
+              onRefresh: _load,
+              child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20),
         children: [
@@ -561,6 +578,7 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ],
       ),
+    ),
     );
   }
 

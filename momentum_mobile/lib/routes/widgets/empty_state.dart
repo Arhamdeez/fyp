@@ -29,9 +29,9 @@ class EmptyState extends StatelessWidget {
       EmptyStateType.firstUse => _Config(
           icon: Icons.explore_rounded,
           color: scheme.primary,
-          title: 'Plan Your Journey',
+          title: 'Plan a route',
           subtitle: message ??
-              'Enter your origin and destination above, then tap "Get Routes" to discover the best paths.',
+              'Choose origin and destination, then tap Get Routes.',
           buttonLabel: null,
         ),
       EmptyStateType.noResults => _Config(

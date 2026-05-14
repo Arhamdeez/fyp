@@ -79,7 +79,7 @@ class _PhaseMessage extends StatelessWidget {
         LoadingPhase.locating => Icons.my_location_rounded,
         LoadingPhase.fetchingInsights => Icons.alt_route_rounded,
         LoadingPhase.fetchingWeather => Icons.cloud_rounded,
-        LoadingPhase.analyzing => Icons.auto_awesome_rounded,
+        LoadingPhase.analyzing => Icons.hourglass_empty_rounded,
         _ => Icons.search_rounded,
       };
 
@@ -93,24 +93,14 @@ class _PhaseMessage extends StatelessWidget {
           builder: (_, child) => Transform.scale(
             scale: 0.95 + pulseCtrl.value * 0.10,
             child: Container(
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [scheme.primary, scheme.tertiary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: scheme.primaryContainer,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.primary.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
+                border: Border.all(color: scheme.outlineVariant),
               ),
-              child: Icon(_icon(), color: Colors.white, size: 28),
+              child: Icon(_icon(), color: scheme.primary, size: 26),
             ),
           ),
         ),
@@ -160,18 +150,12 @@ class _SkeletonCard extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.shadow.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.65)),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: ShaderMask(
               blendMode: BlendMode.srcATop,
               shaderCallback: (bounds) => LinearGradient(

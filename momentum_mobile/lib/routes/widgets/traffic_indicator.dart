@@ -15,15 +15,16 @@ class TrafficIndicator extends StatelessWidget {
   final TrafficInfo traffic;
   final bool showLabel;
 
-  Color _color() => switch (traffic.level) {
-        TrafficLevel.low => const Color(0xFF16A34A),
-        TrafficLevel.moderate => const Color(0xFFF59E0B),
-        TrafficLevel.heavy => const Color(0xFFDC2626),
+  Color _color(ColorScheme scheme) => switch (traffic.level) {
+        TrafficLevel.low => scheme.primary,
+        TrafficLevel.moderate => scheme.secondary,
+        TrafficLevel.heavy => scheme.error,
       };
 
   @override
   Widget build(BuildContext context) {
-    final color = _color();
+    final scheme = Theme.of(context).colorScheme;
+    final color = _color(scheme);
     final pct = traffic.congestionPct / 100;
 
     return Column(

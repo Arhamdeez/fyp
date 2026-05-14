@@ -1,10 +1,12 @@
-/// Full route detail bottom sheet with all stats, tips, and CTAs.
+/// Route detail bottom sheet — compact, matches app Material 3 surfaces.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/route_model.dart';
+import '../route_type_colors.dart';
+import '../services/maps_launcher.dart';
 import '../stores/routes_store.dart';
 import 'safety_score_ring.dart';
 import 'traffic_indicator.dart';
@@ -25,41 +27,40 @@ class RouteDetailSheet extends StatelessWidget {
 
   final RouteOption route;
 
-  Color _typeColor() => switch (route.type) {
-        RouteType.fastest => const Color(0xFF2563EB),
-        RouteType.eco => const Color(0xFF16A34A),
-        RouteType.leastTraffic => const Color(0xFFF59E0B),
-        RouteType.recommended => const Color(0xFF0D9488),
-      };
-
   IconData _typeIcon() => switch (route.type) {
         RouteType.fastest => Icons.flash_on_rounded,
         RouteType.eco => Icons.eco_rounded,
         RouteType.leastTraffic => Icons.traffic_rounded,
-        RouteType.recommended => Icons.auto_awesome_rounded,
+        RouteType.recommended => Icons.star_rounded,
       };
 
   Future<void> _openInMaps(BuildContext context) async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&origin=${route.originName.replaceAll(' ', '+')}'
-      '&destination=${route.destName.replaceAll(' ', '+')}',
+    final store = RoutesStore.instance;
+    final ok = await MapsLauncher.openDirections(
+      originLat: store.originLat,
+      originLng: store.originLng,
+      destLat: store.destLat,
+      destLng: store.destLng,
+      originLabel: route.originName,
+      destLabel: route.destName,
+      mapsVariant: route.type,
     );
-    // We just launch the URL via the platform — no url_launcher needed for this demo path
-    // We use a simple snackbar to inform the user
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening: $uri'),
-        action: SnackBarAction(label: 'OK', onPressed: () {}),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not open Maps. Check that a browser or Maps app is available.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = _typeColor();
+    final accent = route.type.accentColor;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.72,
@@ -69,13 +70,12 @@ class RouteDetailSheet extends StatelessWidget {
       snapSizes: const [0.55, 0.72, 0.95],
       builder: (ctx, scrollCtrl) => Material(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: SingleChildScrollView(
           controller: scrollCtrl,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Drag handle ────────────────────────────────────────────
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -90,64 +90,73 @@ class RouteDetailSheet extends StatelessWidget {
                 ),
               ),
 
-              // ── Gradient header ────────────────────────────────────────
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [accent, accent.withValues(alpha: 0.6)],
+                    colors: [
+                      accent.withValues(alpha: 0.20),
+                      accent.withValues(alpha: 0.06),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: accent.withValues(alpha: 0.38)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(_typeIcon(), color: Colors.white, size: 22),
+                        Icon(_typeIcon(), color: accent, size: 22),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             route.title,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: scheme.onSurface,
                               fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        SafetyScoreRing(score: route.safetyScore, size: 52),
+                        SafetyScoreRing(score: route.safetyScore, size: 48),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       '${route.originName}  →  ${route.destName}',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: scheme.onSurfaceVariant,
                         fontSize: 13,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
-                        _WhiteStatBadge(
+                        _SheetStatBadge(
+                          scheme: scheme,
+                          accent: accent,
                           icon: Icons.schedule_rounded,
                           value: route.etaLabel,
                           label: 'ETA',
                         ),
                         const SizedBox(width: 10),
-                        _WhiteStatBadge(
+                        _SheetStatBadge(
+                          scheme: scheme,
+                          accent: accent,
                           icon: Icons.straighten_rounded,
                           value: route.distanceLabel,
                           label: 'Distance',
                         ),
                         const SizedBox(width: 10),
-                        _WhiteStatBadge(
+                        _SheetStatBadge(
+                          scheme: scheme,
+                          accent: accent,
                           icon: Icons.star_rounded,
                           value: '${route.smartScore}',
                           label: 'Score',
@@ -158,133 +167,133 @@ class RouteDetailSheet extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // ── Weather section ────────────────────────────────────────
               _Section(
-                title: 'Weather Conditions',
+                title: 'Weather',
                 icon: Icons.cloud_rounded,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        WeatherChip(weather: route.weather),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
+                accent: accent,
+                child: route.weather.isAvailable
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                route.weather.description.isEmpty
-                                    ? route.weather.condition
-                                    : route.weather.description,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Wind: ${route.weather.windKph.round()} km/h',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
+                              WeatherChip(weather: route.weather),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  route.weather.description.isEmpty
+                                      ? route.weather.condition
+                                      : route.weather.description,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    if (route.weather.isHazardous) ...[
-                      const SizedBox(height: 10),
-                      _WarningBanner(
-                        message: route.weather.warningText,
-                        scheme: scheme,
+                          const SizedBox(height: 6),
+                          Text(
+                            'Wind ${route.weather.windKph.round()} km/h',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (route.weather.isHazardous) ...[
+                            const SizedBox(height: 10),
+                            _WarningBanner(
+                              message: route.weather.warningText,
+                              scheme: scheme,
+                            ),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          WeatherChip(weather: route.weather),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Pass GOOGLE_WEATHER_KEY or WEATHER_API_KEY (--dart-define).',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ],
-                ),
               ),
 
-              // ── Traffic section ────────────────────────────────────────
               _Section(
-                title: 'Traffic Status',
+                title: 'Traffic',
                 icon: Icons.traffic_rounded,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TrafficIndicator(traffic: route.traffic),
-                    const SizedBox(height: 8),
-                    Text(
-                      route.traffic.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (route.traffic.delayMinutes > 0) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Estimated delay: +${route.traffic.delayMinutes} minutes',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.error,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                accent: accent,
+                child: TrafficIndicator(traffic: route.traffic),
               ),
 
-              // ── Vehicle recommendation section ─────────────────────────
               _Section(
-                title: 'Vehicle Recommendation',
+                title: 'Vehicle',
                 icon: Icons.directions_car_rounded,
+                accent: accent,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     VehicleBadge(rec: route.vehicleRec, large: true),
-                    const SizedBox(height: 10),
-                    Text(
-                      route.vehicleRec.reason,
-                      style: const TextStyle(fontSize: 13, height: 1.4),
-                    ),
                     const SizedBox(height: 8),
-                    _ConfidenceBar(
-                      confidence: route.vehicleRec.confidence,
-                      label: route.vehicleRec.confidenceLabel,
-                      scheme: scheme,
-                      accent: accent,
+                    Text(
+                      route.vehicleRec.isPlaceholder
+                          ? 'Demo suggestion — same for every route for now.'
+                          : route.vehicleRec.reason,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: scheme.onSurface,
+                      ),
                     ),
+                    if (!route.vehicleRec.isPlaceholder) ...[
+                      const SizedBox(height: 10),
+                      _ConfidenceBar(
+                        confidence: route.vehicleRec.confidence,
+                        label: route.vehicleRec.confidenceLabel,
+                        scheme: scheme,
+                        accent: accent,
+                      ),
+                    ],
                   ],
                 ),
               ),
 
-              // ── Smart tip section ──────────────────────────────────────
               _Section(
-                title: 'Smart Travel Tip',
-                icon: Icons.lightbulb_rounded,
+                title: 'Tip',
+                icon: Icons.lightbulb_outline_rounded,
+                accent: accent,
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                    ),
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.tips_and_updates_rounded,
-                          size: 20, color: Color(0xFFF59E0B)),
+                      Icon(Icons.tips_and_updates_rounded,
+                          size: 18, color: accent),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           route.drivingTip,
-                          style: const TextStyle(fontSize: 13, height: 1.5),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, height: 1.35),
                         ),
                       ),
                     ],
@@ -292,31 +301,31 @@ class RouteDetailSheet extends StatelessWidget {
                 ),
               ),
 
-              // ── Route statistics grid ──────────────────────────────────
               _Section(
-                title: 'Route Statistics',
+                title: 'Summary',
                 icon: Icons.bar_chart_rounded,
+                accent: accent,
                 child: Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
                     _StatTile(
                       icon: Icons.shield_rounded,
-                      label: 'Safety Score',
+                      label: 'Safety',
                       value: '${route.safetyScore}/100',
                       color: accent,
                       scheme: scheme,
                     ),
                     _StatTile(
                       icon: Icons.star_rounded,
-                      label: 'Smart Score',
+                      label: 'Smart score',
                       value: '${route.smartScore}/100',
                       color: accent,
                       scheme: scheme,
                     ),
                     _StatTile(
                       icon: Icons.local_gas_station_rounded,
-                      label: 'Fuel Efficiency',
+                      label: 'Fuel',
                       value: route.fuelEfficiencyLabel,
                       color: accent,
                       scheme: scheme,
@@ -334,58 +343,69 @@ class RouteDetailSheet extends StatelessWidget {
 
               const SizedBox(height: 8),
 
-              // ── Action buttons ─────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 child: Column(
                   children: [
-                    // Open in Maps
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: () => _openInMaps(context),
                         icon: const Icon(Icons.map_rounded),
                         label: const Text(
                           'Open in Maps',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: accent,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          elevation: 0,
                         ),
                       ),
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        // Share
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              HapticFeedback.lightImpact();
-                              await RoutesStore.instance.shareRoute(route);
-                            },
-                            icon: const Icon(Icons.share_rounded),
-                            label: const Text('Share'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: accent,
-                              side: BorderSide(
-                                  color: accent.withValues(alpha: 0.5)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                          child: Builder(
+                            builder: (shareContext) => OutlinedButton.icon(
+                              onPressed: () async {
+                                HapticFeedback.lightImpact();
+                                try {
+                                  await RoutesStore.instance
+                                      .shareRoute(shareContext, route);
+                                } catch (_) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Sharing failed. Try again.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.share_rounded),
+                              label: const Text('Share'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: accent,
+                                side: BorderSide(
+                                  color:
+                                      accent.withValues(alpha: 0.55),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Save
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () async {
@@ -405,12 +425,14 @@ class RouteDetailSheet extends StatelessWidget {
                             label: const Text('Save'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFFF59E0B),
-                              side: const BorderSide(
-                                  color: Color(0xFFF59E0B), width: 0.8),
+                              side: BorderSide(
+                                color: const Color(0xFFF59E0B)
+                                    .withValues(alpha: 0.65),
+                              ),
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
+                                  const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                           ),
@@ -428,32 +450,30 @@ class RouteDetailSheet extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper sub-widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _Section extends StatelessWidget {
   const _Section({
     required this.title,
     required this.icon,
+    required this.accent,
     required this.child,
   });
 
   final String title;
   final IconData icon;
+  final Color accent;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: scheme.primary),
+              Icon(icon, size: 16, color: accent),
               const SizedBox(width: 6),
               Text(
                 title,
@@ -461,12 +481,12 @@ class _Section extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurfaceVariant,
-                  letterSpacing: 0.3,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           child,
         ],
       ),
@@ -474,13 +494,17 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _WhiteStatBadge extends StatelessWidget {
-  const _WhiteStatBadge({
+class _SheetStatBadge extends StatelessWidget {
+  const _SheetStatBadge({
+    required this.scheme,
+    required this.accent,
     required this.icon,
     required this.value,
     required this.label,
   });
 
+  final ColorScheme scheme;
+  final Color accent;
   final IconData icon;
   final String value;
   final String label;
@@ -491,17 +515,20 @@ class _WhiteStatBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: accent.withValues(alpha: 0.09),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.28),
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 14, color: Colors.white),
+            Icon(icon, size: 14, color: accent),
             const SizedBox(height: 3),
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: scheme.onSurface,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
@@ -509,7 +536,7 @@ class _WhiteStatBadge extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: scheme.onSurfaceVariant,
                 fontSize: 10,
               ),
             ),
@@ -531,7 +558,7 @@ class _WarningBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: scheme.errorContainer.withValues(alpha: 0.6),
+        color: scheme.errorContainer.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -543,7 +570,7 @@ class _WarningBanner extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                  fontSize: 12, color: scheme.onErrorContainer, height: 1.4),
+                  fontSize: 12, color: scheme.onErrorContainer, height: 1.35),
             ),
           ),
         ],
@@ -629,8 +656,9 @@ class _StatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(14),
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
