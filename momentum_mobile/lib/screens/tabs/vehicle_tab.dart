@@ -1,6 +1,8 @@
-import 'dart:math';
+import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../api/momentum_api.dart';
 import '../../features/vehicle/domain/entities/vehicle.dart';
@@ -28,9 +30,9 @@ class _VehicleTabState extends State<VehicleTab> {
     _refreshVehicles();
   }
 
-  Future<void> _refreshVehicles() async {
+  Future<void> _refreshVehicles({bool silent = false}) async {
     if (!context.mounted) return;
-    setState(() => _loading = true);
+    if (!silent) setState(() => _loading = true);
 
     try {
       final List<Vehicle> local = await LocalVehicleStore.instance.getVehicles();
@@ -63,10 +65,51 @@ class _VehicleTabState extends State<VehicleTab> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        setState(() {
+          if (!silent) _loading = false;
+        });
+        if (!silent) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
       }
     }
+  }
+
+  void _upsertVehicleInState(Vehicle vehicle) {
+    if (!mounted || vehicle.id.isEmpty) return;
+    final merged = {for (final v in _vehicles) v.id: v};
+    merged[vehicle.id] = vehicle;
+    setState(() => _vehicles = merged.values.toList());
+  }
+
+  bool _shouldSaveVehicleLocallyOnError(Object e) {
+    if (e is ApiException) {
+      final c = e.statusCode;
+      if (c == 401 || c == 403) return false;
+      if (c != null && c >= 400 && c < 500) return false;
+      return true;
+    }
+    return true;
+  }
+
+  String _addVehicleErrorMessage(Object e) {
+    if (e is ApiException) {
+      final c = e.statusCode;
+      if (c == 401 || c == 403) {
+        return 'Could not add on server — sign in again or check your session.';
+      }
+      if (c != null && c >= 400 && c < 500) {
+        return 'Could not add: ${e.message}';
+      }
+      return 'Could not reach server — ${e.message}';
+    }
+    if (e is TimeoutException) {
+      return 'Request timed out — check Wi‑Fi and that the API server is running.';
+    }
+    if (e is SocketException || e is http.ClientException) {
+      return 'No network connection to the server — check the API address (e.g. LAN IP on a real phone).';
+    }
+    return 'Could not add vehicle: $e';
   }
 
   Future<void> _addVehicleDialog() async {
@@ -101,28 +144,46 @@ class _VehicleTabState extends State<VehicleTab> {
       final vYear = int.tryParse(year.text.trim()) ?? 2022;
 
       try {
-        await widget.api.createVehicle(
+        final created = await widget.api.createVehicle(
           model: vModel,
           type: vType,
           year: vYear,
         );
-        _refreshVehicles();
+        // Keep a local copy so the garage updates even if GET /vehicles fails next
+        // (timeouts, flaky Wi‑Fi, token issues). Otherwise the new row can vanish.
+        final vehicle = Vehicle.fromMap(created);
+        if (vehicle.id.isNotEmpty) {
+          await LocalVehicleStore.instance.saveVehicle(vehicle);
+          _upsertVehicleInState(vehicle);
+        }
+        // Silent refresh avoids a full-screen spinner and waits less on a slow/dead API.
+        await _refreshVehicles(silent: true);
       } catch (e) {
-        // If it's a socket exception or client exception, save locally
-        final localV = Vehicle(
-          id: 'local-${DateTime.now().millisecondsSinceEpoch}',
-          model: vModel,
-          type: vType,
-          year: vYear,
-          lastDrivenAt: DateTime.now(),
-        );
-        await LocalVehicleStore.instance.saveVehicle(localV);
-        if (mounted) {
+        if (_shouldSaveVehicleLocallyOnError(e)) {
+          final localV = Vehicle(
+            id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+            model: vModel,
+            type: vType,
+            year: vYear,
+            lastDrivenAt: DateTime.now(),
+          );
+          await LocalVehicleStore.instance.saveVehicle(localV);
+          _upsertVehicleInState(localV);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${_addVehicleErrorMessage(e)} Saved on this device; you can sync when the server is available.',
+                ),
+              ),
+            );
+          }
+        } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Server unreachable. Vehicle saved locally (Offline mode).')),
+            SnackBar(content: Text(_addVehicleErrorMessage(e))),
           );
         }
-        _refreshVehicles();
+        await _refreshVehicles(silent: true);
       }
     }
   }
@@ -153,7 +214,7 @@ class _VehicleTabState extends State<VehicleTab> {
         debugPrint('Failed to delete from server (offline): $e');
       }
       
-      _refreshVehicles();
+      await _refreshVehicles(silent: true);
     }
   }
 
@@ -165,7 +226,7 @@ class _VehicleTabState extends State<VehicleTab> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _refreshVehicles,
+              onRefresh: () => _refreshVehicles(silent: true),
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [

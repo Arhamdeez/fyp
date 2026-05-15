@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
 
-const Duration _kHttpTimeout = Duration(seconds: 25);
+/// Default for reads and background calls (fail faster than the old 25s wait).
+const Duration _kHttpTimeout = Duration(seconds: 12);
+
+/// Writes like add-vehicle: short wait so the UI does not hang on a dead host.
+const Duration _kHttpWriteTimeout = Duration(seconds: 7);
 
 String _sanitizeBaseUrl(String raw) => raw.trim().replaceAll(RegExp(r'\s+'), '');
 
@@ -23,18 +28,38 @@ class MomentumApi {
   final String baseUrl;
   String? bearerToken;
 
+  /// Legacy fixed id (still treated as demo via [isOfflineDemoVehicleId]).
   static const String demoVehicleId = 'local-demo-vehicle';
 
-  /// Shown when the API is unreachable; replaced by live OBD when a dongle is connected.
-  static List<dynamic> dummyVehicles() => [
-        <String, dynamic>{
-          '_id': demoVehicleId,
-          'vehicle_model': 'Demo (offline)',
-          'vehicle_type': 'demo',
-          'year': DateTime.now().year,
-          'vin': 'LOCAL-DEMO',
-        },
-      ];
+  static final Random _demoRnd = Random();
+
+  /// True for synthetic garage rows (random offline demo or the legacy fixed id).
+  static bool isOfflineDemoVehicleId(String id) =>
+      id == demoVehicleId || id.startsWith('local-demo-');
+
+  /// Random placeholder when the API has no vehicles or is unreachable.
+  static List<dynamic> dummyVehicles() {
+    final r = _demoRnd;
+    const models = [
+      'Civic', 'Corolla', 'Camry', 'Accord', 'Model 3', 'Leaf', 'F-150', 'RAV4',
+      'CX-5', 'Outback', 'Elantra', 'Sentra', 'Altima', 'Wrangler', 'Bronco',
+    ];
+    const types = ['Sedan', 'SUV', 'Truck', 'Hatchback', 'EV', 'Crossover'];
+    final model = models[r.nextInt(models.length)];
+    final type = types[r.nextInt(types.length)];
+    final year = 2015 + r.nextInt(12);
+    final id = 'local-demo-${DateTime.now().microsecondsSinceEpoch}-${r.nextInt(1 << 20)}';
+    final vin = 'DEMO${List.generate(11, (_) => r.nextInt(10)).join()}';
+    return [
+      <String, dynamic>{
+        '_id': id,
+        'vehicle_model': '$model (demo)',
+        'vehicle_type': type,
+        'year': year,
+        'vin': vin,
+      },
+    ];
+  }
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -72,16 +97,16 @@ class MomentumApi {
     return (m['token'] ?? m['access_token']) as String;
   }
 
-  Future<http.Response> _get(String path) =>
-      http.get(Uri.parse('$baseUrl$path'), headers: _headers).timeout(_kHttpTimeout);
+  Future<http.Response> _get(String path, {Duration? timeout}) =>
+      http.get(Uri.parse('$baseUrl$path'), headers: _headers).timeout(timeout ?? _kHttpTimeout);
 
-  Future<http.Response> _post(String path, {Object? body}) => http
+  Future<http.Response> _post(String path, {Object? body, Duration? timeout}) => http
       .post(
         Uri.parse('$baseUrl$path'),
         headers: _headers,
         body: body is String ? body : (body != null ? jsonEncode(body) : null),
       )
-      .timeout(_kHttpTimeout);
+      .timeout(timeout ?? _kHttpTimeout);
 
   static List<dynamic> _decodeVehicleList(Object? raw) {
     if (raw is List<dynamic>) return raw;
@@ -116,15 +141,21 @@ class MomentumApi {
   }) async {
     final y = year ?? DateTime.now().year;
     final v = vin ?? 'DEMO${DateTime.now().millisecondsSinceEpoch}';
-    final r = await _post(
-      '/vehicles',
-      body: {
-        'vehicle_model': model,
-        'vehicle_type': type,
-        'year': y,
-        'vin': v,
-      },
-    );
+    late final http.Response r;
+    try {
+      r = await _post(
+        '/vehicles',
+        body: {
+          'vehicle_model': model,
+          'vehicle_type': type,
+          'year': y,
+          'vin': v,
+        },
+        timeout: _kHttpWriteTimeout,
+      );
+    } on TimeoutException {
+      throw ApiException('Request timed out — check network and API URL.', statusCode: null);
+    }
     return _jsonOrThrow(r);
   }
 
@@ -132,7 +163,7 @@ class MomentumApi {
     final r = await http.delete(
       Uri.parse('$baseUrl/vehicles/$vehicleId'),
       headers: _headers,
-    ).timeout(_kHttpTimeout);
+    ).timeout(_kHttpWriteTimeout);
     if (r.statusCode >= 200 && r.statusCode < 300) return;
     throw ApiException('Failed to delete vehicle: ${r.body}', statusCode: r.statusCode);
   }

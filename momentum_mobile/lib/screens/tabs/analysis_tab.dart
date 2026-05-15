@@ -50,7 +50,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
 
   Future<void> _refreshHistory() async {
     final id = _vehicleId;
-    if (id == null || id == MomentumApi.demoVehicleId) {
+    if (id == null || MomentumApi.isOfflineDemoVehicleId(id)) {
       if (!context.mounted) return;
       setState(() => _history = const []);
       return;

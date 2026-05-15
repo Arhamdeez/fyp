@@ -84,7 +84,7 @@ class _DashboardTabState extends State<DashboardTab> {
         final map = raw as Map<String, dynamic>;
         final id = _vehicleIdFrom(map);
         final name = _vehicleName(map);
-        if (id == MomentumApi.demoVehicleId) continue;
+        if (MomentumApi.isOfflineDemoVehicleId(id)) continue;
         try {
           final rows = await widget.api.vehicleData(id, limit: 1);
           if (rows.isNotEmpty) {
